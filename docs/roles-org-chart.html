@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>چارت درختی نقش‌ها و ارتباطات — نظام بازرسی</title>
+<style>
+  :root{
+    --bg:#f5f6fa; --card:#fff; --ink:#1f2430; --muted:#6b7280; --line:#dde2ec;
+    --navy:#1f3a8a; --blue:#2563eb; --radius:13px;
+    --shadow:0 1px 2px rgba(16,24,40,.06),0 8px 22px rgba(16,24,40,.07);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-size:14.6px;line-height:1.85;
+    font-family:'Vazirmatn','IRANSans','Segoe UI',Tahoma,'Noto Sans Arabic',system-ui,sans-serif}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 16px 70px}
+  code{background:#eef1f7;padding:1px 6px;border-radius:6px;font-size:12.4px;direction:ltr;display:inline-block}
+
+  /* ---------- hero ---------- */
+  header.hero{background:linear-gradient(135deg,#0d1633 0%,#1f3a8a 55%,#2f6fd0 100%);
+    color:#fff;padding:28px 0 24px;box-shadow:var(--shadow)}
+  header.hero .wrap{padding-bottom:0}
+  .kicker{font-size:12.4px;opacity:.85;margin-bottom:6px}
+  h1{margin:0 0 8px;font-size:26px;font-weight:800}
+  .sub{margin:0;opacity:.93;font-size:14.3px;max-width:82ch}
+  .nav{margin-top:14px;font-size:13px}
+  .nav a{color:#cfe0ff;text-decoration:none;border-bottom:1px dashed rgba(255,255,255,.45)}
+  .stats{display:flex;flex-wrap:wrap;gap:9px;margin-top:16px}
+  .stat{background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.22);border-radius:12px;
+    padding:7px 14px;min-width:112px}
+  .stat b{display:block;font-size:18px;line-height:1.5}
+  .stat span{font-size:11.8px;opacity:.85}
+
+  /* ---------- toolbar ---------- */
+  .toolbar{position:sticky;top:0;z-index:40;background:rgba(245,246,250,.95);
+    backdrop-filter:blur(6px);border-bottom:1px solid var(--line);padding:11px 0;margin-bottom:20px}
+  .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .btn{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:999px;
+    padding:6px 13px;font-size:12.8px;cursor:pointer;font-family:inherit;transition:.15s}
+  .btn:hover{border-color:#9db2d8;transform:translateY(-1px)}
+  .btn.active{background:var(--navy);border-color:var(--navy);color:#fff}
+  .btn.ghost{background:transparent}
+  .spacer{flex:1}
+  input[type=search]{border:1px solid var(--line);border-radius:999px;padding:6px 13px;
+    font-family:inherit;font-size:12.8px;background:#fff;min-width:170px;color:var(--ink)}
+  .legend{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px;align-items:center}
+  .lg{display:inline-flex;align-items:center;gap:7px;font-size:12px;padding:3px 10px;border-radius:999px;
+    border:1px solid var(--line);background:#fff;cursor:pointer;font-family:inherit;transition:.15s}
+  .lg.off{opacity:.38;filter:grayscale(.7)}
+  .lg svg{width:26px;height:8px;flex:0 0 26px}
+  .lg .sw{width:10px;height:10px;border-radius:3px}
+  .hint{font-size:12.6px;color:var(--muted);margin:8px 0 0}
+
+  /* ---------- tree ---------- */
+  #treeScroller{overflow:auto;background:#fff;border:1px solid var(--line);border-radius:var(--radius);
+    box-shadow:var(--shadow);padding:0;min-height:280px}
+  #treeSizer{position:relative;overflow:visible;padding:26px 16px 30px;min-width:100%}
+  #treeInner{position:absolute;top:26px;right:16px;transform-origin:top right}
+  #edges{position:absolute;inset-inline-start:0;top:0;pointer-events:none;overflow:visible}
+  ul.tree, ul.tree ul{display:flex;justify-content:center;margin:0;padding:0}
+  ul.tree{width:max-content}
+  ul.tree ul{padding-top:34px}
+  ul.tree li{list-style:none;display:flex;flex-direction:column;align-items:center;position:relative;padding:0 7px}
+  .rc{width:206px;background:#fff;border:1.6px solid var(--line);border-radius:12px;padding:10px 11px 11px;
+    text-align:right;position:relative;transition:.18s;box-shadow:0 1px 2px rgba(16,24,40,.05);
+    border-top:4px solid var(--accent,#868e96);cursor:pointer}
+  body.compact .rc{width:168px;padding:7px 8px 8px}
+  .rc:hover{box-shadow:0 6px 18px rgba(16,24,40,.14);transform:translateY(-2px)}
+  .rc .code{position:absolute;top:-11px;inset-inline-start:9px;background:var(--accent,#868e96);color:#fff;
+    font-size:10.4px;font-weight:800;border-radius:6px;padding:0 6px;line-height:1.7}
+  .rc .kind{position:absolute;top:-10px;inset-inline-end:9px;background:#fff;border:1px solid var(--accent,#868e96);
+    color:var(--accent,#495057);font-size:10.2px;font-weight:700;border-radius:999px;padding:0 7px;line-height:1.6}
+  .rc h3{margin:6px 0 1px;font-size:13.6px;font-weight:800;line-height:1.6}
+  body.compact .rc h3{font-size:12.4px}
+  .rc .unit{font-size:11.2px;color:var(--muted);margin:0 0 6px}
+  .rc ul.duties{margin:0;padding-inline-start:15px;font-size:11.4px;color:#414a5c;line-height:1.75}
+  body.compact .rc ul.duties{display:none}
+  .rc ul.duties li{margin:1px 0}
+  .rc .links{margin-top:7px;display:flex;flex-wrap:wrap;gap:4px}
+  .rc .links i{font-style:normal;font-size:10.2px;border-radius:6px;padding:0 6px;color:#fff;font-weight:700}
+  .toggle{position:absolute;bottom:-11px;inset-inline-start:50%;transform:translateX(50%);
+    width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;border:2px solid #fff;
+    font-size:11px;line-height:1;display:grid;place-items:center;cursor:pointer;font-weight:800;z-index:3}
+  li.collapsed>ul{display:none}
+  li.faded .rc{opacity:.24;filter:grayscale(.75)}
+  li.hl .rc{box-shadow:0 0 0 3px var(--accent,#2563eb),0 8px 20px rgba(16,24,40,.18)}
+  li.match .rc{box-shadow:0 0 0 3px #ffd43b,0 8px 20px rgba(16,24,40,.18)}
+  .elabel{font-size:10.6px;fill:#333c4d;font-family:inherit;font-weight:600}
+
+  /* ---------- panels / tables ---------- */
+  .panel{display:none}
+  .panel.show{display:block}
+  section.block{margin-top:32px}
+  section.block>h2{font-size:17.6px;margin:0 0 4px;display:flex;align-items:center;gap:10px}
+  section.block>h2::before{content:"";width:5px;height:22px;border-radius:3px;background:var(--blue)}
+  .tbl-scroll{overflow:auto;border-radius:var(--radius);box-shadow:var(--shadow);background:#fff;max-height:70vh}
+  table{width:100%;border-collapse:collapse;font-size:12.9px;background:#fff}
+  th,td{border-bottom:1px solid #edf0f5;padding:8px 10px;text-align:right;vertical-align:top}
+  thead th{background:var(--navy);color:#fff;font-weight:700;font-size:12.1px;position:sticky;top:0;z-index:2;white-space:nowrap}
+  tbody tr:nth-child(even){background:#fbfcfe}
+  tbody tr:hover{background:#f2f6ff}
+  .nowrap{white-space:nowrap}
+  .tagpill{display:inline-block;font-size:11.2px;font-weight:700;border-radius:999px;padding:1px 9px;color:#fff}
+  .raci{text-align:center;font-weight:800;font-size:12.2px;width:34px}
+  .raci.A{background:#fff4e6;color:#a04000}
+  .raci.R{background:#e6fcf5;color:#08543d}
+  .raci.C{background:#f3f0ff;color:#4a2bb0}
+  .raci.I{background:#f1f3f5;color:#5c6673}
+  td.sticky-col{position:sticky;inset-inline-start:0;background:#fff;z-index:1;min-width:230px;
+    border-inline-end:2px solid #e6eaf2}
+  tbody tr:nth-child(even) td.sticky-col{background:#fbfcfe}
+  pre{background:#0f172a;color:#d8e3ff;padding:18px;border-radius:var(--radius);overflow:auto;
+    font-size:12.2px;line-height:1.9;direction:ltr;text-align:left;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px;margin-top:12px}
+  .kcard{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:14px;box-shadow:var(--shadow)}
+  .kcard h4{margin:0 0 6px;font-size:14px}
+  .kcard p{margin:0;font-size:12.6px;color:var(--muted)}
+  .kcard ul{margin:6px 0 0;padding-inline-start:17px;font-size:12.4px;color:#414a5c}
+  footer{margin-top:42px;padding-top:16px;border-top:1px solid var(--line);font-size:12.3px;
+    color:var(--muted);text-align:center}
+
+  @media print{
+    body{background:#fff;font-size:11px}
+    .toolbar,.nav,footer,.no-print{display:none !important}
+    #treeScroller{overflow:visible;border:0;box-shadow:none;padding:0}
+    .panel.show{display:block !important}
+    .rc{break-inside:avoid;box-shadow:none}
+    .tbl-scroll{max-height:none;overflow:visible;box-shadow:none}
+    header.hero{background:#1f3a8a !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="kicker">نظام مدیریت بازرسی · ساختار سازمانی و شبکه ارتباطات</div>
+    <h1>چارت درختی نقش‌ها و ارتباطات</h1>
+    <p class="sub">
+      ساختار سلسله‌مراتبی نقش‌های درگیر در چرخه بازرسی به‌همراه خطوط ارتباطی:
+      <b>گزارش‌دهی</b>، <b>اختیار تایید</b>، <b>هماهنگی اجرایی</b>، <b>مشاوره/پشتیبانی</b>،
+      <b>ارجاع نظارتی</b> و <b>مرز استقلال بازرس</b>.
+    </p>
+    <div class="nav">🔗 فرایند مرحله‌به‌مرحله: <a href="./inspection-cycle.html">چرخه بازرسی (۲۶ گام)</a></div>
+    <div class="stats" id="stats"></div>
+  </div>
+</header>
+
+<div class="toolbar no-print">
+  <div class="wrap" style="padding-bottom:0">
+    <div class="row">
+      <button class="btn active" data-view="tree">🌳 نمودار درختی</button>
+      <button class="btn ghost" data-view="links">🔗 ماتریس ارتباطات</button>
+      <button class="btn ghost" data-view="raci">🧩 ماتریس RACI</button>
+      <button class="btn ghost" data-view="roles">👤 شناسنامه نقش‌ها</button>
+      <button class="btn ghost" data-view="mermaid">⌘ کد Mermaid</button>
+      <span class="spacer"></span>
+      <input type="search" id="search" placeholder="جست‌وجوی نقش…">
+      <button class="btn ghost" id="expandAll">بازکردن همه</button>
+      <button class="btn ghost" id="collapseAll">بستن شاخه‌ها</button>
+      <button class="btn ghost" id="compactBtn">حالت فشرده</button>
+      <button class="btn ghost" id="labelsBtn">پنهان‌کردن برچسب خطوط</button>
+      <button class="btn ghost" onclick="window.print()">🖨 چاپ</button>
+    </div>
+    <div class="legend" id="legendLinks"></div>
+    <div class="legend" id="legendKinds"></div>
+    <p class="hint">
+      روی هر نقش کلیک کنید تا <b>زنجیره فرمان (تا بالاترین مقام)</b>، <b>زیرمجموعه‌ها</b> و <b>خطوط ارتباطی</b> آن برجسته شود.
+      روی دکمه‌ی ⊕/⊖ زیر هر کارت، شاخه باز یا بسته می‌شود.
+    </p>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- TREE -->
+  <div class="panel show" id="view-tree">
+    <div id="treeScroller"><div id="treeSizer"><div id="treeInner"><svg id="edges"></svg><ul class="tree" id="tree"></ul></div></div></div>
+    <div class="row no-print" style="margin-top:10px;justify-content:center">
+      <button class="btn" id="zoomOut">−</button>
+      <button class="btn ghost" id="zoomLabel" style="min-width:74px">۱۰۰٪</button>
+      <button class="btn" id="zoomIn">+</button>
+      <button class="btn ghost" id="zoomReset">بازنشانی بزرگ‌نمایی</button>
+      <button class="btn ghost" id="fitBtn">جا دادن در صفحه</button>
+    </div>
+  </div>
+
+  <!-- LINKS -->
+  <div class="panel" id="view-links">
+    <section class="block">
+      <h2>ماتریس ارتباطات — چه کسی با چه کسی، درباره چه چیزی</h2>
+      <p class="hint">«نوع» با رنگ خطوط نمودار درختی یکسان است. فراوانی، بازه زمانی معمول تبادل اطلاعات را نشان می‌دهد.</p>
+      <div class="tbl-scroll"><table id="linksTable"></table></div>
+    </section>
+  </div>
+
+  <!-- RACI -->
+  <div class="panel" id="view-raci">
+    <section class="block">
+      <h2>ماتریس مسئولیت RACI در چرخه بازرسی</h2>
+      <p class="hint">
+        <span class="tagpill" style="background:#a04000">A</span> پاسخگو/تصویب‌کننده ·
+        <span class="tagpill" style="background:#08543d">R</span> مسئول اجرا ·
+        <span class="tagpill" style="background:#4a2bb0">C</span> مشورت‌شونده ·
+        <span class="tagpill" style="background:#5c6673">I</span> مطلع‌شونده
+      </p>
+      <div class="tbl-scroll"><table id="raciTable"></table></div>
+    </section>
+  </div>
+
+  <!-- ROLES -->
+  <div class="panel" id="view-roles">
+    <section class="block">
+      <h2>شناسنامه نقش‌ها</h2>
+      <p class="hint">اختیارات، وظایف و نقاط تماس هر نقش در چرخه بازرسی.</p>
+      <div class="cards" id="roleCards"></div>
+    </section>
+  </div>
+
+  <!-- MERMAID -->
+  <div class="panel" id="view-mermaid">
+    <section class="block">
+      <h2>کد Mermaid</h2>
+      <p class="hint">
+        در <code>docs/roles-and-relations.md</code> ذخیره شده و در گیت‌هاب به‌صورت خودکار رندر می‌شود.
+        ویرایش آنلاین: <span dir="ltr">mermaid.live</span>
+      </p>
+      <button class="btn no-print" id="copyMermaid" style="margin-bottom:10px">📋 کپی کد</button>
+      <pre id="mermaidSrc"></pre>
+    </section>
+  </div>
+
+  <footer>
+    ساختار سازمانی و شبکه ارتباطات چرخه بازرسی · نسخه ۱.۰ ·
+    منبع: <span dir="ltr">docs/roles-and-relations.md</span>
+  </footer>
+</div>
+
+<script id="mermaid-source" type="text/plain">
+%%{init: {'flowchart': {'htmlLabels': true, 'curve': 'basis'}}}%%
+flowchart TD
+    CEO["مدیرعامل / بالاترین مقام سازمان<br/>R-01"]:::exec
+    OV["کمیته عالی بازرسی و نظارت<br/>R-02"]:::over
+    DEP["معاونت بازرسی و امور نظارتی<br/>R-03 · تایید مشخصات بازرس"]:::dep
+    CM["کمیته رسیدگی به تخلفات<br/>R-11"]:::over
+    DIS["کمیته انضباطی<br/>R-12"]:::over
+    OPS["معاونت‌های صفی (مالی/فنی/اجرایی)<br/>R-13"]:::unit
+    STAFF["واحدهای ستادی پشتیبان<br/>R-14"]:::sup
+
+    IO["اداره بازرسی (مدیر بازرسی)<br/>R-04"]:::insp
+    SEC["دبیرخانه بازرسی<br/>R-05"]:::insp
+    TEAMS["گروه‌های تخصصی بازرسی<br/>R-06"]:::insp
+    LEAD["سرپرست تیم بازرسی<br/>R-07"]:::insp
+    INSP["بازرس<br/>R-08"]:::insp
+    INSP2["بازرس همکار / کارآموز<br/>R-09"]:::insp
+    EXP["کارشناس تخصصی / آزمایشگاه<br/>R-10"]:::sup
+
+    UH["مدیر واحد مورد بازرسی<br/>R-15"]:::unit
+    UL["رابط بازرسی واحد<br/>R-16"]:::unit
+    US["کارکنان و فرایندهای واحد<br/>R-17"]:::unit
+
+    LEG["مشاور حقوقی<br/>R-18"]:::sup
+    SEC2["حراست / امنیت<br/>R-19"]:::sup
+    HR["منابع انسانی (بانک صلاحیت‌ها)<br/>R-20"]:::sup
+    IT["فناوری اطلاعات و سامانه مستندسازی<br/>R-21"]:::sys
+
+    CEO --> OV
+    CEO --> DEP
+    CEO --> CM
+    CEO --> OPS
+    CEO --> STAFF
+    CM --> DIS
+    DEP --> IO
+    IO --> SEC
+    IO --> TEAMS
+    TEAMS --> LEAD
+    TEAMS --> EXP
+    LEAD --> INSP
+    LEAD --> INSP2
+    OPS --> UH
+    UH --> UL --> US
+    STAFF --> LEG
+    STAFF --> SEC2
+    STAFF --> HR
+    STAFF --> IT
+
+    DEP -.->|"تایید مشخصات بازرس + صدور حکم"| INSP
+    DEP -.->|"تایید گزارش نهایی"| LEAD
+    DEP -.->|"تصویب برنامه اقدام اصلاحی"| UH
+    DEP ==>|"ارجاع تخلف محرز"| CM
+    OV -.->|"پایش عملکرد چرخه"| DEP
+    INSP -.->|"درخواست مستندات، مصاحبه، نمونه‌برداری"| UL
+    SEC -.->|"ابلاغ، هماهنگی زمان، دریافت پاسخ"| UL
+    IO x-.->|"مرز استقلال: ممنوعیت تعارض منافع"| UH
+    EXP -.->|"کارشناسی و تست تکمیلی"| INSP
+    LEG -.->|"انطباق حقوقی یافته‌ها"| LEAD
+    SEC2 -.->|"همکاری در بازرسی سرزده"| IO
+    HR -.->|"بانک اطلاعات صلاحیت بازرس‌ها"| DEP
+    IT -.->|"سامانه، دسترسی، بایگانی و داشبورد"| SEC
+
+    classDef exec fill:#1f3a8a,stroke:#0d1633,color:#fff,stroke-width:2px;
+    classDef dep fill:#fff4e6,stroke:#e8590c,color:#5c2c00,stroke-width:2px;
+    classDef insp fill:#e6fcf5,stroke:#0ca678,color:#0b3d33,stroke-width:2px;
+    classDef over fill:#fff5f5,stroke:#e03131,color:#5c0f0f,stroke-width:2px;
+    classDef unit fill:#f3f0ff,stroke:#7048e8,color:#2b1a66,stroke-width:2px;
+    classDef sup fill:#e7f5ff,stroke:#1971c2,color:#0b3d66,stroke-width:2px;
+    classDef sys fill:#f1f3f5,stroke:#5c6673,color:#2b323b,stroke-width:2px;
+</script>
+
+<script>
+/* ============================================================
+   داده‌ها
+   ============================================================ */
+const KINDS = {
+  exec:{label:'مدیریت ارشد', color:'#1f3a8a'},
+  over:{label:'نهاد نظارتی / کمیته', color:'#e03131'},
+  dep :{label:'معاونت (تصویب‌کننده)', color:'#e8590c'},
+  insp:{label:'صف بازرسی', color:'#0ca678'},
+  sup :{label:'ستادی / پشتیبان', color:'#1971c2'},
+  unit:{label:'واحد مورد بازرسی', color:'#7048e8'},
+  sys :{label:'سامانه و فناوری', color:'#5c6673'},
+};
+
+const LINKS_TYPES = {
+  hierarchy :{label:'سلسله‌مراتب / گزارش‌دهی', color:'#1f3a8a', dash:'',        w:2.0},
+  approve   :{label:'اختیار تایید و تصویب',    color:'#e8590c', dash:'',        w:2.6},
+  coordinate:{label:'هماهنگی اجرایی',          color:'#0ca678', dash:'7 5',     w:2.0},
+  consult   :{label:'مشاوره و پشتیبانی',       color:'#7048e8', dash:'2 5',     w:1.8},
+  escalate  :{label:'ارجاع نظارتی / تخلفات',   color:'#e03131', dash:'9 4',     w:2.2},
+  boundary  :{label:'مرز استقلال (تعارض منافع)',color:'#c2255c', dash:'13 4 3 4',w:2.4},
+};
+
+const NODES = [
+  {id:'ceo', parent:null, code:'R-01', kind:'exec', title:'مدیرعامل / بالاترین مقام سازمان', unit:'مدیریت ارشد',
+   duties:['تعیین سیاست‌های کلی نظارت و بازرسی','تصویب برنامه سالانه بازرسی','دریافت گزارش دوره‌ای شاخص‌ها','ارجاع موارد خاص به کمیته عالی']},
+
+  {id:'oversight', parent:'ceo', code:'R-02', kind:'over', title:'کمیته عالی بازرسی و نظارت', unit:'نهاد نظارتی ترکیبی',
+   duties:['راهبری سیاست‌های نظارتی','پایش عملکرد چرخه بازرسی','تصویب تغییرات آیین‌نامه بازرسی','ارزیابی سالانه اثربخشی نظام بازرسی']},
+
+  {id:'deputy', parent:'ceo', code:'R-03', kind:'dep', title:'معاونت بازرسی و امور نظارتی', unit:'معاونت — مرجع تصویب',
+   duties:['<b>تایید مشخصات بازرس</b> و بررسی تعارض منافع','امضای حکم ماموریت بازرسی','تایید گزارش نهایی','رسیدگی به اعتراض واحد','تصویب برنامه اقدام اصلاحی','ارجاع تخلف محرز به کمیته']},
+
+  {id:'committee', parent:'ceo', code:'R-11', kind:'over', title:'کمیته رسیدگی به تخلفات', unit:'کمیته ترکیبی (موردی)',
+   duties:['رسیدگی به تخلف محرز و مغایرت بحرانی','صدور رای و تعیین ضمانت اجرا','ارجاع به کمیته انضباطی','اعلام نتیجه به پرونده بازرسی']},
+
+  {id:'discipline', parent:'committee', code:'R-12', kind:'over', title:'کمیته انضباطی', unit:'کمیته دائمی',
+   duties:['رسیدگی به قصور در اجرای اقدام اصلاحی','تکرار عدم اثربخشی اقدامات','تعیین تنبیهات اداری']},
+
+  {id:'ops', parent:'ceo', code:'R-13', kind:'unit', title:'معاونت‌های صفی', unit:'مالی / فنی / اجرایی',
+   duties:['مسئولیت عملکرد واحدهای زیرمجموعه','پاسخ‌گویی به یافته‌های بازرسی','تخصیص منابع برای اقدام اصلاحی']},
+
+  {id:'staff', parent:'ceo', code:'R-14', kind:'sup', title:'واحدهای ستادی پشتیبان', unit:'ستاد سازمان',
+   duties:['تامین مشاوره تخصصی','پشتیبانی حقوقی، امنیتی و فناوری','تامین نیروی واجد صلاحیت بازرسی']},
+
+  {id:'insp_org', parent:'deputy', code:'R-04', kind:'insp', title:'اداره بازرسی (مدیر بازرسی)', unit:'صف نظارتی',
+   duties:['اجرای برنامه مصوب بازرسی','تخصیص پرونده به تیم‌ها','کنترل نهایی داخلی گزارش‌ها','ارائه گزارش تجمیعی و شاخص‌ها به معاونت']},
+
+  {id:'sec', parent:'insp_org', code:'R-05', kind:'insp', title:'دبیرخانه بازرسی', unit:'پشتیبانی اجرایی چرخه',
+   duties:['ثبت و کدگذاری درخواست‌ها','اولویت‌بندی و زمان‌بندی بازرسی‌ها','ابلاغ و هماهنگی با واحدها','بایگانی سوابق و کنترل نسخه','نگهداری داشبورد شاخص‌ها و هشدار مهلت‌ها']},
+
+  {id:'teams', parent:'insp_org', code:'R-06', kind:'insp', title:'گروه‌های تخصصی بازرسی', unit:'مالی / فنی / اداری / ایمنی / IT',
+   duties:['سازماندهی تیم بر اساس تخصص','تدوین و به‌روزرسانی چک‌لیست‌ها','تخصص‌گرایی در دامنه بازرسی']},
+
+  {id:'lead', parent:'teams', code:'R-07', kind:'insp', title:'سرپرست تیم بازرسی', unit:'بازرس ارشد',
+   duties:['کنترل کیفیت پیش‌نویس گزارش','تقسیم کار و نظارت بر تیم','تایید کفایت شواهد و درجه‌بندی مغایرت','انجام راستی‌آزمایی اثربخشی اقدام']},
+
+  {id:'inspector', parent:'lead', code:'R-08', kind:'insp', title:'بازرس', unit:'مجری بازرسی',
+   duties:['اعلام صلاحیت و تعارض منافع','اجرای بازرسی میدانی و مصاحبه','نمونه‌برداری و ثبت شواهد','تدوین گزارش بازرسی','راستی‌آزمایی اقدام اصلاحی']},
+
+  {id:'inspector2', parent:'lead', code:'R-09', kind:'insp', title:'بازرس همکار / کارآموز', unit:'تحت نظارت سرپرست',
+   duties:['پشتیبانی در اجرای بازرسی','مستندسازی شواهد و پیوست‌ها','یادگیری روش‌شناسی بازرسی']},
+
+  {id:'expert', parent:'teams', code:'R-10', kind:'sup', title:'کارشناس تخصصی / آزمایشگاه', unit:'پشتیبانی فنی موردی',
+   duties:['کارشناسی فنی در گام ۱۰ چرخه','نمونه‌برداری استاندارد و تست','برآورد ریالی و فنی مغایرت‌ها']},
+
+  {id:'unit_head', parent:'ops', code:'R-15', kind:'unit', title:'مدیر واحد مورد بازرسی', unit:'صف اجرایی',
+   duties:['پاسخ‌گویی به گزارش بازرسی','اعلام نظر یا اعتراض در مهلت مقرر','تعیین و اجرای اقدام اصلاحی','تامین دسترسی به سوابق و مستندات']},
+
+  {id:'unit_liaison', parent:'unit_head', code:'R-16', kind:'unit', title:'رابط بازرسی واحد', unit:'نقطه تماس واحد',
+   duties:['هماهنگی زمان و جلسات بازرسی','گردآوری و ارسال مستندات','پیگیری مهلت‌های اقدام اصلاحی']},
+
+  {id:'unit_staff', parent:'unit_liaison', code:'R-17', kind:'unit', title:'کارکنان و فرایندهای واحد', unit:'دامنه بازرسی',
+   duties:['همکاری در مصاحبه و ارائه اطلاعات','اجرای رویه‌های اصلاح‌شده']},
+
+  {id:'legal', parent:'staff', code:'R-18', kind:'sup', title:'مشاور حقوقی', unit:'امور حقوقی و قراردادها',
+   duties:['انطباق حقوقی یافته‌ها و استناد به معیار','بررسی قراردادها و تعهدات','تنظیم لوایح در موارد اعتراض']},
+
+  {id:'security', parent:'staff', code:'R-19', kind:'sup', title:'حراست / امنیت', unit:'امور امنیتی',
+   duties:['همکاری در بازرسی‌های سرزده','حفاظت از مستندات و شواهد حساس','همراهی در پرونده‌های تخلف']},
+
+  {id:'hr', parent:'staff', code:'R-20', kind:'sup', title:'منابع انسانی', unit:'بانک اطلاعات صلاحیت‌ها',
+   duties:['نگهداری بانک اطلاعات بازرس‌ها','ارزیابی صلاحیت و دوره‌های آموزشی','اعلام تعارض منافع سازمانی']},
+
+  {id:'it', parent:'staff', code:'R-21', kind:'sys', title:'فناوری اطلاعات و سامانه مستندسازی', unit:'پشتیبانی دائم',
+   duties:['مدیریت دسترسی و سطح محرمانگی','بایگانی الکترونیکی و کنترل نسخه','داشبورد شاخص‌ها و هشدار خودکار مهلت‌ها']},
+];
+
+/* خطوط ارتباطی غیرسلسله‌مراتبی */
+const XLINKS = [
+  {from:'deputy', to:'inspector', type:'approve', label:'تایید مشخصات بازرس و صدور حکم ماموریت', freq:'هر پرونده'},
+  {from:'deputy', to:'lead', type:'approve', label:'تایید گزارش نهایی بازرسی', freq:'هر پرونده'},
+  {from:'deputy', to:'unit_head', type:'approve', label:'تصویب برنامه اقدام اصلاحی (CAPA)', freq:'هر مغایرت'},
+  {from:'deputy', to:'committee', type:'escalate', label:'ارجاع تخلف محرز / مغایرت بحرانی', freq:'موردی'},
+  {from:'oversight', to:'deputy', type:'consult', label:'پایش و ارزیابی عملکرد چرخه بازرسی', freq:'فصلی'},
+  {from:'inspector', to:'unit_liaison', type:'coordinate', label:'درخواست مستندات، مصاحبه و نمونه‌برداری', freq:'در طول اجرا'},
+  {from:'sec', to:'unit_liaison', type:'coordinate', label:'ابلاغ، هماهنگی زمان و دریافت پاسخ', freq:'مستمر'},
+  {from:'insp_org', to:'unit_head', type:'boundary', label:'مرز استقلال: ممنوعیت هرگونه تعارض منافع', freq:'دائم'},
+  {from:'expert', to:'inspector', type:'coordinate', label:'کارشناسی و تست تکمیلی (گام ۱۰)', freq:'موردی'},
+  {from:'legal', to:'lead', type:'consult', label:'انطباق حقوقی یافته‌ها و گزارش', freq:'موردی'},
+  {from:'security', to:'insp_org', type:'coordinate', label:'همکاری و همراهی در بازرسی سرزده', freq:'موردی'},
+  {from:'hr', to:'deputy', type:'consult', label:'بانک اطلاعات صلاحیت بازرس‌ها و آموزش', freq:'فصلی'},
+  {from:'it', to:'sec', type:'consult', label:'سامانه، دسترسی، بایگانی و داشبورد شاخص‌ها', freq:'دائم'},
+  {from:'committee', to:'discipline', type:'escalate', label:'ارجاع قصور و ضمانت اجرا', freq:'موردی'},
+];
+
+/* ماتریس RACI */
+const RACI_ROLES = ['ceo','oversight','deputy','insp_org','sec','lead','inspector','expert','legal','security','hr','it','committee','unit_head'];
+const RACI = [
+  ['تدوین و تصویب برنامه سالانه بازرسی','A','R','C','R','C','I','I','C','','','','','','I'],
+  ['ثبت درخواست، کدگذاری و اولویت‌بندی','I','I','A','C','R','','','','','','','','','I'],
+  ['انتخاب بازرس و بررسی صلاحیت و تعارض منافع','I','','A','R','C','C','I','','','I','C','','',''],
+  ['تایید مشخصات بازرس و صدور حکم ماموریت','I','I','A','R','C','C','I','','C','','C','','','I'],
+  ['ابلاغ و هماهنگی با واحد مورد بازرسی','','','I','C','R','I','I','','','C','','I','','I'],
+  ['اجرای بازرسی و جمع‌آوری شواهد','I','','I','I','I','A','R','C','C','C','','I','','C'],
+  ['کارشناسی و تست تکمیلی','','','I','I','','C','R','A','C','','','','','C'],
+  ['تدوین و بازبینی گزارش بازرسی','I','','A','C','I','R','R','C','C','','','','',''],
+  ['تایید و ابلاغ گزارش نهایی','I','I','A','R','R','C','I','','C','','','','','I'],
+  ['رسیدگی به اعتراض واحد مورد بازرسی','I','C','A','C','I','C','I','','R','','','','','R'],
+  ['تعیین و اجرای اقدام اصلاحی (CAPA)','I','I','A','I','C','C','I','','C','','','','','R'],
+  ['راستی‌آزمایی اثربخشی اقدام اصلاحی','I','','A','C','I','C','R','C','','','','','','C'],
+  ['ارجاع و رسیدگی به تخلف محرز','A','C','R','I','I','I','I','','C','C','','','R','C'],
+  ['بایگانی، داشبورد شاخص‌ها و درس‌آموخته‌ها','I','C','A','R','R','C','I','','','','','','C','I'],
+];
+
+/* ============================================================
+   ابزارها
+   ============================================================ */
+const FA=['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];
+const fa = s => String(s).replace(/\d/g,d=>FA[+d]);
+const byId = id => NODES.find(n=>n.id===id);
+const childrenOf = id => NODES.filter(n=>n.parent===id);
+const el=(t,c,h)=>{const e=document.createElement(t); if(c)e.className=c; if(h!=null)e.innerHTML=h; return e;};
+const SVGNS='http://www.w3.org/2000/svg';
+const svgEl=(t,attrs)=>{const e=document.createElementNS(SVGNS,t);for(const k in attrs)e.setAttribute(k,attrs[k]);return e;};
+
+function descendants(id){
+  const out=[];
+  (function walk(x){ childrenOf(x).forEach(c=>{ out.push(c.id); walk(c.id); }); })(id);
+  return out;
+}
+function ancestors(id){
+  const out=[]; let n=byId(id);
+  while(n && n.parent){ out.push(n.parent); n=byId(n.parent); }
+  return out;
+}
+
+/* ---------- آمار ---------- */
+const depthOf = id => { let d=1, n=byId(id); while(n && n.parent){ d++; n=byId(n.parent); } return d; };
+document.getElementById('stats').innerHTML = [
+  [fa(NODES.length),'نقش سازمانی'],
+  [fa(new Set(NODES.map(n=>n.kind)).size),'دسته نقش'],
+  [fa(Math.max(...NODES.map(n=>depthOf(n.id)))),'سطح سلسله‌مراتب'],
+  [fa(XLINKS.length),'خط ارتباطی تعریف‌شده'],
+  [fa(Object.keys(LINKS_TYPES).length),'نوع ارتباط'],
+  [fa(RACI.length),'فعالیت کلیدی در RACI'],
+].map(([b,s])=>`<div class="stat"><b>${b}</b><span>${s}</span></div>`).join('');
+
+/* ---------- افسانه ---------- */
+const activeTypes = new Set(Object.keys(LINKS_TYPES));
+const activeKinds = new Set(Object.keys(KINDS));
+
+function lineSvg(t){
+  return `<svg viewBox="0 0 26 8"><line x1="0" y1="4" x2="26" y2="4" stroke="${t.color}"
+    stroke-width="2.4" ${t.dash?`stroke-dasharray="${t.dash}"`:''}/></svg>`;
+}
+document.getElementById('legendLinks').innerHTML =
+  `<span style="font-size:12.3px;color:var(--muted)">نوع ارتباط:</span>`;
+Object.entries(LINKS_TYPES).forEach(([k,t])=>{
+  const b=el('button','lg'); b.dataset.type=k;
+  b.innerHTML=`${lineSvg(t)}<span>${t.label}</span>`;
+  b.onclick=()=>{ activeTypes.has(k)?activeTypes.delete(k):activeTypes.add(k); refreshLegend(); drawEdges(); };
+  document.getElementById('legendLinks').appendChild(b);
+});
+document.getElementById('legendKinds').innerHTML =
+  `<span style="font-size:12.3px;color:var(--muted)">دسته نقش:</span>`;
+Object.entries(KINDS).forEach(([k,t])=>{
+  const b=el('button','lg'); b.dataset.kind=k;
+  b.innerHTML=`<span class="sw" style="background:${t.color}"></span><span>${t.label}</span>`;
+  b.onclick=()=>{
+    activeKinds.has(k)?activeKinds.delete(k):activeKinds.add(k);
+    refreshLegend(); applyKindFilter();
+  };
+  document.getElementById('legendKinds').appendChild(b);
+});
+function refreshLegend(){
+  document.querySelectorAll('.lg[data-type]').forEach(b=>b.classList.toggle('off',!activeTypes.has(b.dataset.type)));
+  document.querySelectorAll('.lg[data-kind]').forEach(b=>b.classList.toggle('off',!activeKinds.has(b.dataset.kind)));
+}
+
+/* ---------- ساخت درخت ---------- */
+const liById = {};
+function buildNode(n){
+  const li=el('li'); li.dataset.id=n.id; liById[n.id]=li;
+  const k=KINDS[n.kind]||KINDS.sup;
+  const card=el('div','rc');
+  card.style.setProperty('--accent',k.color);
+  card.dataset.kind=n.kind;
+  const links = XLINKS.filter(l=>l.from===n.id||l.to===n.id);
+  card.innerHTML=`
+    <span class="code">${n.code}</span>
+    <span class="kind">${k.label}</span>
+    <h3>${n.title}</h3>
+    <p class="unit">${n.unit}</p>
+    <ul class="duties">${n.duties.map(d=>`<li>${d}</li>`).join('')}</ul>
+    <div class="links">${links.map(l=>{
+      const t=LINKS_TYPES[l.type];
+      const other=byId(l.from===n.id?l.to:l.from);
+      return `<i style="background:${t.color}" title="${t.label} → ${other.title}: ${l.label}">${other.code}</i>`;
+    }).join('')}</div>`;
+  card.onclick=e=>{ e.stopPropagation(); highlight(n.id); };
+  li.appendChild(card);
+
+  const kids=childrenOf(n.id);
+  if(kids.length){
+    const t=el('div','toggle','−');
+    t.onclick=e=>{ e.stopPropagation(); toggleBranch(n.id); };
+    card.appendChild(t);
+    const ul=el('ul');
+    kids.forEach(c=>ul.appendChild(buildNode(c)));
+    li.appendChild(ul);
+  }
+  return li;
+}
+document.getElementById('tree').appendChild(buildNode(NODES[0]));
+
+function toggleBranch(id){
+  const li=liById[id]; if(!li) return;
+  li.classList.toggle('collapsed');
+  const t=li.querySelector(':scope > .rc > .toggle');
+  if(t) t.textContent = li.classList.contains('collapsed') ? '+' : '−';
+  requestAnimationFrame(layout);
+}
+document.getElementById('expandAll').onclick=()=>{
+  Object.values(liById).forEach(li=>{li.classList.remove('collapsed');
+    const t=li.querySelector(':scope > .rc > .toggle'); if(t)t.textContent='−';});
+  layout();
+};
+document.getElementById('collapseAll').onclick=()=>{
+  NODES.forEach(n=>{ if(childrenOf(n.id).length && n.id!==NODES[0].id) toggleBranch(n.id); });
+};
+document.getElementById('compactBtn').onclick=e=>{
+  document.body.classList.toggle('compact');
+  e.target.textContent = document.body.classList.contains('compact')?'حالت کامل':'حالت فشرده';
+  requestAnimationFrame(layout);
+};
+let showLabels=true;
+document.getElementById('labelsBtn').onclick=e=>{
+  showLabels=!showLabels;
+  e.target.textContent = showLabels?'پنهان‌کردن برچسب خطوط':'نمایش برچسب خطوط';
+  layout();
+};
+
+/* فیلتر دسته نقش */
+function applyKindFilter(){
+  NODES.forEach(n=>{
+    const li=liById[n.id];
+    const ok = activeKinds.has(n.kind);
+    li.classList.toggle('faded', !ok && activeKinds.size < Object.keys(KINDS).length);
+  });
+}
+
+/* برجسته‌سازی زنجیره فرمان */
+let highlighted=null;
+function highlight(id){
+  if(highlighted===id){ clearHighlight(); return; }
+  highlighted=id;
+  const chain=new Set([id,...ancestors(id),...descendants(id)]);
+  NODES.forEach(n=>liById[n.id].classList.toggle('faded',!chain.has(n.id)));
+  NODES.forEach(n=>liById[n.id].classList.toggle('hl',n.id===id));
+  /* شاخه‌های بسته در مسیر را باز کن */
+  ancestors(id).forEach(a=>{
+    const li=liById[a];
+    if(li.classList.contains('collapsed')){ li.classList.remove('collapsed');
+      const t=li.querySelector(':scope > .rc > .toggle'); if(t)t.textContent='−'; }
+  });
+  hlChain=chain; layout();
+}
+function clearHighlight(){
+  highlighted=null;
+  NODES.forEach(n=>{liById[n.id].classList.remove('faded','hl');});
+  applyKindFilter(); hlChain=null; layout();
+}
+document.addEventListener('click',e=>{ if(!e.target.closest('.rc')&&highlighted) clearHighlight(); });
+
+/* جست‌وجو */
+document.getElementById('search').oninput=e=>{
+  const q=e.target.value.trim();
+  NODES.forEach(n=>liById[n.id].classList.remove('match'));
+  if(!q){ clearHighlight(); return; }
+  const hits=NODES.filter(n=>(n.title+' '+n.unit+' '+n.code+' '+n.duties.join(' ')).includes(q));
+  hits.forEach(n=>{
+    liById[n.id].classList.add('match');
+    ancestors(n.id).forEach(a=>{ const li=liById[a];
+      if(li.classList.contains('collapsed')){li.classList.remove('collapsed');
+        const t=li.querySelector(':scope > .rc > .toggle'); if(t)t.textContent='−';} });
+  });
+  if(hits.length===1) highlight(hits[0].id); else layout();
+};
+
+/* ---------- موقعیت‌ها (بدون تاثیر transform) ---------- */
+function relPos(node, root){
+  let x=0,y=0,e=node;
+  while(e && e!==root){ x+=e.offsetLeft; y+=e.offsetTop; e=e.offsetParent; }
+  return {x,y,w:node.offsetWidth,h:node.offsetHeight};
+}
+function visible(id){
+  const li=liById[id]; if(!li) return false;
+  let p=li.parentElement;
+  while(p && p.id!=='treeInner'){
+    if(p.tagName==='UL' && p.parentElement.classList.contains('collapsed')) return false;
+    p=p.parentElement;
+  }
+  return true;
+}
+
+/* ---------- ترسیم خطوط ---------- */
+const svg=document.getElementById('edges');
+const inner=document.getElementById('treeInner');
+const sizer=document.getElementById('treeSizer');
+const scroller=document.getElementById('treeScroller');
+
+function drawEdges(onlyChain, chain){
+  const pos={};
+  NODES.forEach(n=>{ const c=liById[n.id].querySelector(':scope > .rc');
+    if(visible(n.id)) pos[n.id]=relPos(c, inner); });
+
+  const W=inner.scrollWidth, H=inner.scrollHeight;
+  svg.setAttribute('width',W); svg.setAttribute('height',H);
+  svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  svg.innerHTML='';
+
+  const defs=svgEl('defs');
+  Object.entries(LINKS_TYPES).forEach(([k,t])=>{
+    const m=svgEl('marker',{id:'ar-'+k,viewBox:'0 0 10 10',refX:'9',refY:'5',
+      markerWidth:'6',markerHeight:'6',orient:'auto-start-reverse'});
+    m.appendChild(svgEl('path',{d:'M0,0 L10,5 L0,10 z',fill:t.color}));
+    defs.appendChild(m);
+  });
+  svg.appendChild(defs);
+
+  const isOff=(id)=> onlyChain && chain && !chain.has(id);
+
+  /* خطوط سلسله‌مراتب */
+  NODES.forEach(p=>{
+    if(!pos[p.id]) return;
+    const kids=childrenOf(p.id).filter(k=>pos[k.id]);
+    if(!kids.length) return;
+    const t=LINKS_TYPES.hierarchy;
+    const px=pos[p.id].x+pos[p.id].w/2, py=pos[p.id].y+pos[p.id].h;
+    const midY=py+17;
+    kids.forEach(k=>{
+      const cx=pos[k.id].x+pos[k.id].w/2, cy=pos[k.id].y;
+      const off=isOff(p.id)||isOff(k.id);
+      const path=svgEl('path',{
+        d:`M ${px} ${py} L ${px} ${midY} L ${cx} ${midY} L ${cx} ${cy-4}`,
+        fill:'none', stroke:t.color, 'stroke-width':t.w,
+        'marker-end':`url(#ar-hierarchy)`,
+        opacity: off?0.12:1
+      });
+      svg.appendChild(path);
+    });
+  });
+
+  /* خطوط ارتباطی */
+  XLINKS.forEach(l=>{
+    if(!activeTypes.has(l.type)) return;
+    if(!pos[l.from]||!pos[l.to]) return;
+    const t=LINKS_TYPES[l.type];
+    const a=pos[l.from], b=pos[l.to];
+    const acx=a.x+a.w/2, acy=a.y+a.h/2, bcx=b.x+b.w/2, bcy=b.y+b.h/2;
+    const dy=bcy-acy, dx=bcx-acx;
+    let d, lx, ly;
+    if(Math.abs(dy) > a.h*0.9){
+      /* عمودی: پایینِ منبع → بالای مقصد */
+      const y1 = dy>0 ? a.y+a.h : a.y;
+      const y2 = dy>0 ? b.y-4 : b.y+b.h+4;
+      const my=(y1+y2)/2;
+      d=`M ${acx} ${y1} C ${acx} ${my}, ${bcx} ${my}, ${bcx} ${y2}`;
+      lx=(acx+bcx)/2; ly=my;
+    }else{
+      /* افقی: پهلوها */
+      const x1 = dx>0 ? a.x+a.w : a.x;
+      const x2 = dx>0 ? b.x : b.x+b.w;
+      const mx=(x1+x2)/2;
+      d=`M ${x1} ${acy} C ${mx} ${acy}, ${mx} ${bcy}, ${x2} ${bcy}`;
+      lx=mx; ly=(acy+bcy)/2;
+    }
+    const off=isOff(l.from)||isOff(l.to);
+    const path=svgEl('path',{d,fill:'none',stroke:t.color,'stroke-width':t.w,
+      'stroke-dasharray':t.dash||'','marker-end':`url(#ar-${l.type})`,
+      'stroke-linecap':'round',opacity:off?0.1:0.95});
+    svg.appendChild(path);
+    if(showLabels && !off){
+      const txt=svgEl('text',{x:lx,y:ly-6,'text-anchor':'middle',class:'elabel',
+        stroke:'#fff','stroke-width':'3.5','paint-order':'stroke'});
+      txt.textContent=l.label.length>46?l.label.slice(0,44)+'…':l.label;
+      svg.appendChild(txt);
+    }
+  });
+}
+
+/* ---------- ماتریس ارتباطات ---------- */
+(function(){
+  const t=document.getElementById('linksTable');
+  let html=`<thead><tr><th>#</th><th>نوع ارتباط</th><th>از (نقش)</th><th>به (نقش)</th>
+    <th>محتوا / موضوع تبادل</th><th>فراوانی</th></tr></thead><tbody>`;
+  const rows=[...XLINKS];
+  NODES.forEach(n=>{ if(n.parent) rows.push({from:n.parent,to:n.id,type:'hierarchy',
+    label:'گزارش‌دهی سلسله‌مراتبی و ابلاغ دستور',freq:'مستمر',hier:true}); });
+  rows.sort((a,b)=> (a.type===b.type?0:a.type<b.type?-1:1));
+  rows.forEach((l,i)=>{
+    const ty=LINKS_TYPES[l.type], f=byId(l.from), tt=byId(l.to);
+    html+=`<tr data-link="${i}">
+      <td class="nowrap">${fa(i+1)}</td>
+      <td class="nowrap"><span class="tagpill" style="background:${ty.color}">${ty.label}</span></td>
+      <td class="nowrap"><b>${f.title}</b><br><span style="color:var(--muted);font-size:11.6px">${f.code}</span></td>
+      <td class="nowrap"><b>${tt.title}</b><br><span style="color:var(--muted);font-size:11.6px">${tt.code}</span></td>
+      <td>${l.label}</td><td class="nowrap">${l.freq}</td></tr>`;
+  });
+  t.innerHTML=html+'</tbody>';
+  t.querySelectorAll('tbody tr').forEach(tr=>{
+    tr.style.cursor='pointer';
+    tr.onclick=()=>{ const l=rows[+tr.dataset.link];
+      document.querySelector('.btn[data-view="tree"]').click(); highlight(l.to); };
+  });
+})();
+
+/* ---------- RACI ---------- */
+(function(){
+  const t=document.getElementById('raciTable');
+  let html=`<thead><tr><th class="sticky-col">فعالیت چرخه بازرسی</th>`+
+    RACI_ROLES.map(id=>{const n=byId(id);
+      return `<th title="${n.title}">${n.code}<br><span style="font-weight:400;font-size:10.6px;opacity:.85">${n.title.split(' ')[0]}</span></th>`;}).join('')+
+    `</tr></thead><tbody>`;
+  RACI.forEach(row=>{
+    html+=`<tr><td class="sticky-col"><b>${row[0]}</b></td>`+
+      row.slice(1).map((v,i)=>{
+        const n=byId(RACI_ROLES[i]);
+        if(!v) return `<td class="raci" style="color:#dfe3ea">–</td>`;
+        return `<td class="raci ${v}" title="${n.title}" style="cursor:pointer" data-role="${n.id}">${v}</td>`;
+      }).join('')+`</tr>`;
+  });
+  t.innerHTML=html+'</tbody>';
+  t.querySelectorAll('td[data-role]').forEach(td=>{
+    td.onclick=()=>{ document.querySelector('.btn[data-view="tree"]').click(); highlight(td.dataset.role); };
+  });
+})();
+
+/* ---------- شناسنامه نقش‌ها ---------- */
+document.getElementById('roleCards').innerHTML = NODES.map(n=>{
+  const k=KINDS[n.kind];
+  const up=n.parent?byId(n.parent):null;
+  const downs=childrenOf(n.id);
+  const rel=[...XLINKS.filter(l=>l.from===n.id).map(l=>({dir:'→',o:l.to,...l})),
+             ...XLINKS.filter(l=>l.to===n.id).map(l=>({dir:'←',o:l.from,...l}))];
+  return `<div class="kcard" style="border-top:4px solid ${k.color}">
+    <h4 style="color:${k.color}">${n.code} · ${n.title}</h4>
+    <p>${n.unit} — ${k.label}</p>
+    <p style="margin-top:6px"><b>گزارش به:</b> ${up?up.title:'—'}<br>
+       <b>زیرمجموعه:</b> ${downs.length?downs.map(d=>d.title).join('، '):'—'}</p>
+    <ul>${n.duties.map(d=>`<li>${d}</li>`).join('')}</ul>
+    ${rel.length?`<p style="margin-top:8px;font-size:12.2px"><b>ارتباطات:</b><br>`+
+      rel.map(r=>{const ty=LINKS_TYPES[r.type];const o=byId(r.o);
+        return `<span style="color:${ty.color}">${r.dir}</span> ${o.title} — ${r.label} <i style="color:var(--muted);font-style:normal">(${r.freq})</i>`;
+      }).join('<br>')+`</p>`:''}
+  </div>`;
+}).join('');
+
+/* ---------- Mermaid ---------- */
+const MERMAID=document.getElementById('mermaid-source').textContent.trim();
+document.getElementById('mermaidSrc').textContent=MERMAID;
+document.getElementById('copyMermaid').onclick=async e=>{
+  try{ await navigator.clipboard.writeText(MERMAID); e.target.textContent='✅ کپی شد'; }
+  catch{ e.target.textContent='⚠ کپی ناموفق'; }
+  setTimeout(()=>e.target.textContent='📋 کپی کد',1800);
+};
+
+/* ---------- تب‌ها ---------- */
+document.querySelectorAll('.btn[data-view]').forEach(b=>{
+  b.onclick=()=>{
+    document.querySelectorAll('.btn[data-view]').forEach(x=>{x.classList.remove('active');x.classList.add('ghost');});
+    b.classList.add('active'); b.classList.remove('ghost');
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('show'));
+    document.getElementById('view-'+b.dataset.view).classList.add('show');
+    if(b.dataset.view==='tree') requestAnimationFrame(layout);
+  };
+});
+
+/* ---------- چیدمان، بزرگ‌نمایی و اندازه‌گیری ---------- */
+let hlChain=null;
+let zoom=1;
+function layout(){
+  try{
+    inner.style.transform='none';
+    inner.style.width='auto';
+    const w=Math.max(inner.scrollWidth||1,1);
+    const h=Math.max(inner.scrollHeight||1,1);
+    inner.style.width=w+'px';
+    inner.style.transform = zoom===1 ? 'none' : `scale(${zoom})`;
+    sizer.style.width  = Math.max(Math.round(w*zoom)+32, scroller.clientWidth)+'px';
+    sizer.style.height = Math.round(h*zoom)+60+'px';
+  }catch(e){ console.warn('layout', e); }
+  drawEdges(!!hlChain, hlChain);
+  const zl=document.getElementById('zoomLabel');
+  if(zl) zl.textContent = fa(Math.round(zoom*100))+'٪';
+}
+function setZoom(z){ zoom=Math.min(1.6, Math.max(0.35, Math.round(z*100)/100)); layout(); }
+document.getElementById('zoomIn').onclick   = ()=>setZoom(zoom+0.1);
+document.getElementById('zoomOut').onclick  = ()=>setZoom(zoom-0.1);
+document.getElementById('zoomReset').onclick= ()=>setZoom(1);
+document.getElementById('fitBtn').onclick   = ()=>{
+  inner.style.transform='none'; inner.style.width='auto';
+  const w=inner.scrollWidth||1;
+  const avail=Math.max(scroller.clientWidth-40, 320);
+  setZoom(Math.min(1, avail/w));
+};
+window.addEventListener('resize',()=>layout());
+window.addEventListener('load',()=>{ layout(); setTimeout(layout,150); });
+layout();
+</script>
+</body>
+</html>
