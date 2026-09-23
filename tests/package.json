@@ -1,0 +1,7 @@
+{
+  "name": "didban-browser-tests",
+  "private": true,
+  "type": "module",
+  "scripts": { "test": "node --test domain.test.cjs", "test:browser": "node browser.smoke.mjs", "test:sources": "node source.browser.mjs", "test:forms": "node report-form.browser.mjs", "test:inspector": "node inspector-entry.browser.mjs", "test:referrals": "node checklist-referral.browser.mjs", "test:photos": "node no-demo-photos.browser.mjs", "test:lessons": "node root-lessons.browser.mjs" },
+  "devDependencies": { "playwright": "1.63.0", "@axe-core/playwright": "4.13.0" }
+}

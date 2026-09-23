@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>چرخه بازرسی — نمودار فرایند</title>
+<style>
+  :root{
+    --bg:#f6f7fb; --card:#ffffff; --ink:#1f2430; --muted:#6b7280; --line:#d9dee8;
+    --brand:#1f3a8a; --brand-2:#2563eb; --ok:#0ca678; --warn:#e8590c; --danger:#e03131;
+    --radius:14px; --shadow:0 1px 2px rgba(16,24,40,.06),0 8px 24px rgba(16,24,40,.06);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg); color:var(--ink);
+    font-family:'Vazirmatn','IRANSans','Segoe UI',Tahoma,'Noto Sans Arabic',system-ui,sans-serif;
+    line-height:1.85; font-size:15px;
+  }
+  a{color:var(--brand-2)}
+  .wrap{max-width:1060px;margin:0 auto;padding:0 16px 80px}
+
+  /* ---------- header ---------- */
+  header.hero{
+    background:linear-gradient(135deg,#111c44 0%,#1f3a8a 55%,#2563eb 100%);
+    color:#fff;padding:30px 0 26px;margin-bottom:18px;box-shadow:var(--shadow)
+  }
+  header.hero .wrap{padding-bottom:0}
+  .kicker{font-size:12.5px;letter-spacing:.4px;opacity:.85;margin-bottom:6px}
+  h1{font-size:27px;margin:0 0 8px;font-weight:800}
+  .sub{opacity:.92;font-size:14.5px;max-width:78ch;margin:0}
+  .stats{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+  .stat{background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.22);
+    border-radius:12px;padding:8px 14px;min-width:120px}
+  .stat b{display:block;font-size:19px;line-height:1.4}
+  .stat span{font-size:12px;opacity:.85}
+
+  /* ---------- toolbar ---------- */
+  .toolbar{position:sticky;top:0;z-index:20;background:rgba(246,247,251,.94);
+    backdrop-filter:blur(6px);border-bottom:1px solid var(--line);
+    padding:12px 0;margin-bottom:22px}
+  .toolbar .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .btn{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:999px;
+    padding:7px 14px;font-size:13px;cursor:pointer;font-family:inherit;transition:.15s}
+  .btn:hover{border-color:#9db2d8;transform:translateY(-1px)}
+  .btn.active{background:var(--brand);border-color:var(--brand);color:#fff}
+  .btn.ghost{background:transparent}
+  .spacer{flex:1}
+  .legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+  .chip{display:inline-flex;align-items:center;gap:6px;font-size:12.3px;padding:4px 11px;
+    border-radius:999px;border:1px solid var(--line);background:#fff;cursor:pointer;
+    font-family:inherit;transition:.15s}
+  .chip .dot{width:9px;height:9px;border-radius:50%}
+  .chip.off{opacity:.42;filter:grayscale(.6)}
+
+  /* ---------- phases ---------- */
+  .phase{margin-bottom:30px}
+  .phase-head{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+  .phase-num{width:38px;height:38px;flex:0 0 38px;border-radius:11px;background:var(--brand);
+    color:#fff;display:grid;place-items:center;font-weight:800;font-size:16px}
+  .phase-head h2{margin:0;font-size:17.5px;font-weight:800}
+  .phase-head p{margin:0;font-size:12.8px;color:var(--muted)}
+
+  .flow{position:relative;padding-inline-start:14px}
+  .node{position:relative;margin-bottom:14px}
+  .node .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:14px 16px;box-shadow:var(--shadow);border-inline-start:5px solid var(--accent,#868e96);
+    transition:.2s}
+  .node.dim{opacity:.28;filter:grayscale(.7)}
+  .node.hidden{display:none}
+  .card h3{margin:0 0 4px;font-size:15.4px;font-weight:700;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+  .step-no{font-size:12px;font-weight:800;color:#fff;background:var(--accent,#868e96);
+    border-radius:7px;padding:1px 8px;line-height:1.9;white-space:nowrap}
+  .role-tag{font-size:11.6px;font-weight:700;color:var(--accent,#495057);
+    background:var(--accent-bg,#f1f3f5);border:1px solid var(--accent,#868e96);
+    border-radius:999px;padding:1px 9px;white-space:nowrap}
+  .desc{margin:6px 0 0;font-size:13.7px;color:#3d4553}
+  .meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+  .meta div{font-size:12.2px;background:#f8f9fc;border:1px solid #e8ebf2;border-radius:9px;
+    padding:5px 10px;color:#475063}
+  .meta b{color:var(--ink);font-weight:700}
+  .sla{color:#8a5a00 !important;background:#fffaf0 !important;border-color:#ffe4b0 !important}
+
+  /* connector arrow */
+  .node:not(:last-child)::after{content:"";position:absolute;inset-inline-start:-14px;
+    bottom:-14px;width:2px;height:14px;background:linear-gradient(var(--line),#9db2d8)}
+  .node:not(:last-child)::before{content:"";position:absolute;inset-inline-start:-18px;
+    bottom:-16px;border:5px solid transparent;border-top-color:#9db2d8;z-index:1}
+
+  /* decision */
+  .node.decision .card{border-style:solid;background:linear-gradient(180deg,#fffdf7,#fff)}
+  .q-badge{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:7px;
+    background:#ffe066;color:#5c4500;font-weight:900;font-size:14px;transform:rotate(0)}
+  .branches{display:flex;flex-direction:column;gap:7px;margin-top:12px}
+  .branch{display:flex;align-items:center;gap:9px;font-size:12.9px;border-radius:10px;
+    padding:7px 11px;border:1px dashed transparent}
+  .branch .tag{font-weight:800;font-size:11.6px;border-radius:7px;padding:1px 8px;white-space:nowrap}
+  .branch.next{background:#ebfbee;border-color:#b2f2bb;color:#1b4332}
+  .branch.next .tag{background:#0ca678;color:#fff}
+  .branch.loop{background:#fff4e6;border-color:#ffd8a8;color:#66380a}
+  .branch.loop .tag{background:#e8590c;color:#fff}
+  .branch.escalate{background:#fff5f5;border-color:#ffc9c9;color:#6b1414}
+  .branch.escalate .tag{background:#e03131;color:#fff}
+
+  /* start / end pills */
+  .node.terminal .card{border-radius:999px;text-align:center;border-inline-start-width:1px;
+    background:linear-gradient(135deg,#e7f5ff,#f3f0ff);border-color:#b8cdf5}
+  .node.terminal h3{justify-content:center}
+  .node.terminal .desc{text-align:center}
+
+  /* ---------- matrix view ---------- */
+  .panel{display:none}
+  .panel.show{display:block}
+  table{width:100%;border-collapse:collapse;background:#fff;border-radius:var(--radius);
+    overflow:hidden;box-shadow:var(--shadow);font-size:13.3px}
+  th,td{border-bottom:1px solid #edf0f5;padding:9px 11px;text-align:right;vertical-align:top}
+  thead th{background:#1f3a8a;color:#fff;font-weight:700;font-size:12.6px;white-space:nowrap}
+  tbody tr:nth-child(even){background:#fbfcfe}
+  tbody tr:hover{background:#f2f6ff}
+  td .mark{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:7px;
+    font-size:12px;font-weight:900;color:#fff}
+  .mark.primary{box-shadow:0 0 0 3px rgba(31,58,138,.12)}
+  .mark.assist{opacity:.5}
+  .nowrap{white-space:nowrap}
+  .tbl-scroll{overflow-x:auto;border-radius:var(--radius)}
+
+  /* ---------- mermaid source ---------- */
+  pre{background:#0f172a;color:#d8e3ff;padding:18px;border-radius:var(--radius);
+    overflow-x:auto;font-size:12.4px;line-height:1.9;direction:ltr;text-align:left;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  .hint{font-size:12.8px;color:var(--muted);margin:6px 0 14px}
+
+  /* ---------- kpi ---------- */
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin-top:12px}
+  .kpi{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:14px;box-shadow:var(--shadow)}
+  .kpi h4{margin:0 0 4px;font-size:13.8px}
+  .kpi p{margin:0;font-size:12.6px;color:var(--muted)}
+  .kpi b{color:var(--ok)}
+
+  section.block{background:transparent;margin-top:34px}
+  section.block>h2{font-size:18px;margin:0 0 4px;display:flex;align-items:center;gap:10px}
+  section.block>h2::before{content:"";width:5px;height:22px;border-radius:3px;background:var(--brand-2)}
+  .rules{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:6px 20px;box-shadow:var(--shadow)}
+  .rules li{margin:8px 0;font-size:13.8px}
+  footer{margin-top:44px;padding-top:16px;border-top:1px solid var(--line);
+    font-size:12.4px;color:var(--muted);text-align:center}
+
+  @media print{
+    body{background:#fff;font-size:11.5px}
+    .toolbar,footer,.no-print{display:none !important}
+    header.hero{background:#1f3a8a !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .node .card,table,.kpi,.rules{box-shadow:none;break-inside:avoid}
+    .node{break-inside:avoid}
+    .phase{break-inside:auto}
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="kicker">نظام مدیریت بازرسی · مستند فرایند</div>
+    <h1>چرخه بازرسی — فرایند انجام کار</h1>
+    <p class="sub">
+      از ثبت درخواست تا تایید <b>مشخصات بازرس توسط معاونت</b>، اجرای بازرسی، تایید گزارش،
+      اقدام اصلاحی و راستی‌آزمایی، تا بستن پرونده و بازگشت بازخورد به برنامه‌ریزی دوره بعد.
+    </p>
+    <div style="margin-top:12px;font-size:13px">🔗 ساختار سازمانی: <a href="./roles-org-chart.html" style="color:#cfe0ff;text-decoration:none;border-bottom:1px dashed rgba(255,255,255,.45)">چارت درختی نقش‌ها و ارتباطات</a></div>
+    <div class="stats" id="stats"></div>
+  </div>
+</header>
+
+<div class="toolbar no-print">
+  <div class="wrap">
+    <div class="row">
+      <button class="btn active" data-view="flow">🔀 نمودار فرایند</button>
+      <button class="btn ghost" data-view="matrix">🧭 ماتریس نقش‌ها</button>
+      <button class="btn ghost" data-view="steps">📋 جدول گام‌ها</button>
+      <button class="btn ghost" data-view="mermaid">⌘ کد Mermaid</button>
+      <span class="spacer"></span>
+      <button class="btn ghost" id="toggleDetails">بستن جزئیات</button>
+      <button class="btn ghost" id="clearFilter">پاک‌کردن فیلتر</button>
+      <button class="btn ghost" onclick="window.print()">🖨 چاپ</button>
+    </div>
+    <div class="legend" id="legend"></div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- ================= FLOW ================= -->
+  <div class="panel show" id="view-flow"></div>
+
+  <!-- ================= MATRIX ================= -->
+  <div class="panel" id="view-matrix">
+    <section class="block">
+      <h2>ماتریس نقش‌ها در چرخه بازرسی</h2>
+      <p class="hint">■ نقش اصلی (مسئول اجرا) · ░ نقش پشتیبان/همکار — روی هر سطر کلیک کنید تا در نمودار برجسته شود.</p>
+      <div class="tbl-scroll"><table id="matrixTable"></table></div>
+    </section>
+  </div>
+
+  <!-- ================= STEPS ================= -->
+  <div class="panel" id="view-steps">
+    <section class="block">
+      <h2>جدول گام‌ها: مسئول، ورودی، خروجی و مهلت</h2>
+      <p class="hint">مهلت‌ها پیشنهادی و بر حسب روز کاری است و می‌تواند با آیین‌نامه سازمانی تنظیم شود.</p>
+      <div class="tbl-scroll"><table id="stepsTable"></table></div>
+    </section>
+  </div>
+
+  <!-- ================= MERMAID ================= -->
+  <div class="panel" id="view-mermaid">
+    <section class="block">
+      <h2>کد Mermaid</h2>
+      <p class="hint">
+        همین کد در فایل <code>docs/inspection-cycle.md</code> ذخیره شده و در گیت‌هاب/گیت‌لب به‌صورت خودکار رندر می‌شود.
+        برای ویرایشگر Mermaid: <span dir="ltr">mermaid.live</span>
+      </p>
+      <button class="btn no-print" id="copyMermaid" style="margin-bottom:10px">📋 کپی کد</button>
+      <pre id="mermaidSrc"></pre>
+    </section>
+  </div>
+
+  <!-- ================= RULES + KPI ================= -->
+  <section class="block">
+    <h2>قواعد تصمیم و حلقه‌های بازگشت</h2>
+    <div class="tbl-scroll"><table id="rulesTable"></table></div>
+    <ul class="rules" style="margin-top:14px">
+      <li>هیچ بازرسی بدون <b>تایید کتبی معاونت</b> روی مشخصات بازرس آغاز نمی‌شود.</li>
+      <li>تعارض منافع بازرس (قرابت، ذی‌نفعی، سابقه مسئولیت در واحد هدف) مانع تایید است و پرونده به گام انتخاب بازرس بازمی‌گردد.</li>
+      <li>هر حلقه بازگشت حداکثر <b>دو بار</b> مجاز است؛ بار سوم به تصمیم معاونت یا کمیته رسیدگی موکول می‌شود.</li>
+      <li>بازرسی سرزده فقط با مجوز کتبی معاونت و بدون ابلاغ قبلی انجام می‌شود.</li>
+      <li>در صورت مغایرت بحرانی یا تخلف محرز، مسیر کمیته <b>موازی</b> با اقدام اصلاحی پیش می‌رود، نه جایگزین آن.</li>
+      <li>عبور از هر مهلت، هشدار خودکار در سامانه و ثبت در شاخص «پرونده‌های گذشته‌از‌مهلت» دارد.</li>
+    </ul>
+  </section>
+
+  <section class="block">
+    <h2>شاخص‌های پایش چرخه</h2>
+    <div class="grid" id="kpis"></div>
+  </section>
+
+  <footer>
+    مستند فرایند چرخه بازرسی · نسخه ۱.۰ · منبع: <span dir="ltr">docs/inspection-cycle.md</span> و <span dir="ltr">docs/inspection-cycle.html</span>
+  </footer>
+</div>
+
+<script id="mermaid-source" type="text/plain">
+flowchart TD
+    A([منبع بازرسی: برنامه سالانه / شکایت / گزارش تخلف / دستور مدیریت / پیگیری دوره قبل])
+    B[گام ۱ — ثبت در دبیرخانه بازرسی: کد رهگیری، اولویت‌بندی عادی یا فوری]
+    C[گام ۲ — تعیین نوع، دامنه و معیارهای بازرسی + انتخاب بازرس واجد صلاحیت]
+    D{گام ۳ — تایید مشخصات بازرس توسط معاونت؟}
+    E[گام ۴ — صدور حکم ماموریت بازرسی با امضای معاونت]
+    F[گام ۵ — ابلاغ و هماهنگی با واحد (اعلام‌شده یا سرزده)]
+    G[گام ۶ — آماده‌سازی تیم: چک‌لیست، مستندات مرجع، معرفی‌نامه]
+    H[گام ۷ — جلسه افتتاحیه]
+    I[گام ۸ — اجرای بازرسی میدانی: مستندات، مشاهده، مصاحبه، نمونه‌برداری]
+    J[گام ۹ — ثبت یافته‌ها و شواهد با درجه‌بندی مغایرت]
+    K{گام ۱۰ — نیاز به کارشناسی یا تست تکمیلی؟}
+    L[گام ۱۱ — جلسه اختتامیه و دریافت توضیحات واحد]
+    M[گام ۱۲ — تدوین پیش‌نویس گزارش بازرسی]
+    N[گام ۱۳ — بازبینی کیفی توسط سرپرست بازرسی]
+    O{گام ۱۴ — تایید گزارش توسط معاونت؟}
+    P[گام ۱۵ — ابلاغ گزارش نهایی و شروع مهلت پاسخ]
+    Q{گام ۱۶ — اعتراض واحد به گزارش؟}
+    R[گام ۱۷ — رسیدگی به اعتراض توسط معاونت]
+    S{گام ۱۸ — تخلف محرز یا مغایرت بحرانی؟}
+    T[گام ۱۹ — ارجاع به کمیته رسیدگی / حراست]
+    U[گام ۲۰ — تعیین اقدامات اصلاحی CAPA + تصویب معاونت]
+    V[گام ۲۱ — اجرای اقدام اصلاحی توسط واحد]
+    W{گام ۲۲ — راستی‌آزمایی اثربخشی توسط بازرس تایید شد؟}
+    X[گام ۲۳ — ارجاع به کمیته انضباطی]
+    Y[گام ۲۴ — صدور نامه رفع مغایرت و بستن پرونده]
+    Z[گام ۲۵ — بایگانی سوابق و به‌روزرسانی داشبورد شاخص‌ها]
+    AA[گام ۲۶ — درس‌آموخته‌ها، بازنگری چک‌لیست و گزارش دوره‌ای]
+    AB([بازگشت به برنامه‌ریزی دوره بعد — بهبود مستمر])
+
+    A --> B --> C --> D
+    D -- "خیر / اصلاح" --> C
+    D -- بله --> E --> F --> G --> H --> I --> J --> K
+    K -- بله --> I
+    K -- خیر --> L --> M --> N --> O
+    O -- "اصلاح گزارش" --> M
+    O -- بله --> P --> Q
+    Q -- بله --> R --> P
+    Q -- "خیر / پایان مهلت" --> S
+    S -- بله --> T --> U
+    S -- خیر --> U
+    U --> V --> W
+    W -- "خیر — مهلت جدید" --> U
+    W -- "خیر — تکرار قصور" --> X --> U
+    W -- بله --> Y --> Z --> AA --> AB
+</script>
+
+<script>
+/* ============================================================
+   داده‌ی فرایند — چرخه بازرسی
+   ============================================================ */
+const ROLES = {
+  req : {label:'واحد مورد بازرسی', color:'#7048e8', bg:'#f3f0ff'},
+  off : {label:'دبیرخانه بازرسی',   color:'#1971c2', bg:'#e7f5ff'},
+  insp: {label:'بازرس / تیم بازرسی', color:'#0ca678', bg:'#e6fcf5'},
+  dep : {label:'معاونت',            color:'#e8590c', bg:'#fff4e6'},
+  top : {label:'مدیریت / کمیته',     color:'#e03131', bg:'#fff5f5'},
+  sys : {label:'سامانه مستندسازی',   color:'#5c6673', bg:'#f1f3f5'},
+};
+
+const PHASES = [
+  {
+    id:'p1', num:'۱', title:'دریافت درخواست و برنامه‌ریزی',
+    hint:'ورودی چرخه از پنج منبع مختلف تامین می‌شود و در دبیرخانه ثبت و اولویت‌بندی می‌گردد.',
+    nodes:[
+      {type:'terminal', role:'off', title:'منبع بازرسی',
+       desc:'برنامه سالانه بازرسی · شکایت یا گزارش سوت‌زنی · دستور مدیریت · پیگیری اقدام اصلاحی دوره قبل · رویداد خاص (حادثه، ممیزی خارجی)'},
+      {n:1, role:'off', extra:['sys'], title:'ثبت در دبیرخانه بازرسی',
+       desc:'تشکیل پرونده، اختصاص کد رهگیری یکتا، تعیین اولویت (عادی / فوری) و وضعیت اولیه «ثبت‌شده» در سامانه.',
+       in:'درخواست کتبی یا الکترونیکی', out:'پرونده با کد رهگیری', sla:'۱ روز کاری'},
+      {n:2, role:'off', extra:['insp'], title:'تعیین نوع، دامنه و معیارهای بازرسی + انتخاب بازرس',
+       desc:'مشخص شدن قلمرو (مالی، فنی، اداری، ایمنی، فرایندی)، معیارهای انطباق، و پیشنهاد بازرس واجد صلاحیت پس از بررسی تخصص، تجربه و <b>عدم تعارض منافع</b>.',
+       in:'پرونده و چک‌لیست مرجع', out:'برگه دامنه بازرسی + فرم اعلامیه صلاحیت و تعارض منافع', sla:'۲ روز کاری'},
+    ]
+  },
+  {
+    id:'p2', num:'۲', title:'تایید معاونت و صدور حکم ماموریت',
+    hint:'دروازه اصلی چرخه: بدون تایید کتبی معاونت روی مشخصات بازرس، بازرسی آغاز نمی‌شود.',
+    nodes:[
+      {n:3, type:'decision', role:'dep', title:'تایید مشخصات بازرس توسط معاونت',
+       desc:'بررسی صلاحیت فنی، استقلال، عدم تعارض منافع و تناسب بازرس با دامنه بازرسی.',
+       in:'برگه دامنه + مشخصات بازرس', out:'دستور تایید یا ابطال با ذکر دلیل', sla:'۲ روز کاری',
+       branches:[
+         {kind:'next', tag:'بله', text:'صدور حکم ماموریت (گام ۴)'},
+         {kind:'loop', tag:'خیر', text:'بازگشت به گام ۲ — انتخاب بازرس جایگزین یا اصلاح دامنه'}
+       ]},
+      {n:4, role:'dep', extra:['off'], title:'صدور حکم ماموریت بازرسی',
+       desc:'امضای معاونت روی حکم؛ تعیین مهلت اجرا، دامنه اختیارات بازرس (دسترسی به اسناد، مصاحبه، نمونه‌برداری)، و سطح محرمانگی.',
+       in:'تاییدیه گام ۳', out:'حکم ماموریت امضاشده + معرفی‌نامه', sla:'۱ روز کاری'},
+      {n:5, role:'req', extra:['off'], title:'ابلاغ و هماهنگی با واحد مورد بازرسی',
+       desc:'در بازرسی <b>اعلام‌شده</b>: ابلاغ کتبی و تعیین زمان. در بازرسی <b>سرزده</b>: بدون ابلاغ قبلی و فقط با مجوز کتبی معاونت.',
+       in:'حکم ماموریت', out:'صورت‌جلسه هماهنگی / گزارش ابلاغ سرزده', sla:'۲ روز کاری'},
+      {n:6, role:'insp', title:'آماده‌سازی تیم بازرسی',
+       desc:'تکمیل چک‌لیست، گردآوری مستندات مرجع (آیین‌نامه، قرارداد، استاندارد، گزارش دوره قبل)، تجهیز ابزار و نمونه‌برداری.',
+       in:'حکم و دامنه بازرسی', out:'بسته بازرسی آماده', sla:'۲ روز کاری'},
+    ]
+  },
+  {
+    id:'p3', num:'۳', title:'اجرای بازرسی میدانی',
+    hint:'حلقه اجرا و جمع‌آوری شواهد؛ در صورت نقص شواهد، به اجرای میدانی بازمی‌گردد.',
+    nodes:[
+      {n:7, role:'insp', extra:['req'], title:'جلسه افتتاحیه',
+       desc:'معرفی تیم بازرسی، تشریح دامنه، روش کار، زمان‌بندی و انتظارات؛ تعیین رابط واحد.',
+       in:'بسته بازرسی', out:'صورت‌جلسه افتتاحیه با امضای طرفین', sla:'روز شروع'},
+      {n:8, role:'insp', extra:['req'], title:'اجرای بازرسی',
+       desc:'بررسی مستندات و سوابق، مشاهده میدانی، مصاحبه با کارکنان، نمونه‌برداری و تست، تطبیق مورد‌به‌مورد با چک‌لیست و معیارها.',
+       in:'چک‌لیست + دسترسی به سوابق', out:'چک‌لیست تکمیل‌شده، شواهد، نمونه‌ها', sla:'۳ تا ۱۰ روز کاری'},
+      {n:9, role:'insp', title:'ثبت یافته‌ها و شواهد',
+       desc:'ثبت هر یافته با استناد به معیار، پیوست شواهد، و درجه‌بندی مغایرت: <b>بحرانی</b>، <b>عمده</b>، <b>جزئی</b>؛ به‌همراه نقاط قوت.',
+       in:'شواهد میدانی', out:'فهرست یافته‌ها با درجه‌بندی', sla:'هم‌زمان با اجرا'},
+      {n:10, type:'decision', role:'insp', title:'نیاز به کارشناسی، نمونه یا تست تکمیلی؟',
+       desc:'اگر شواهد برای نتیجه‌گیری قاطع کافی نباشد، کارشناسی تخصصی یا تست اضافه با مهلت محدود درخواست می‌شود.',
+       in:'فهرست یافته‌های ناقص', out:'درخواست کارشناسی / گزارش تست', sla:'۲ روز کاری',
+       branches:[
+         {kind:'loop', tag:'بله', text:'بازگشت به گام ۸ — تکمیل شواهد در مهلت محدود'},
+         {kind:'next', tag:'خیر', text:'جلسه اختتامیه (گام ۱۱)'}
+       ]},
+      {n:11, role:'insp', extra:['req'], title:'جلسه اختتامیه',
+       desc:'اعلام یافته‌های اولیه به واحد، دریافت توضیحات و مستندات تکمیلی، و رفع سوءتفاهم‌های factual پیش از نگارش گزارش.',
+       in:'یافته‌ها و شواهد', out:'صورت‌جلسه اختتامیه با امضای طرفین', sla:'آخرین روز اجرا'},
+    ]
+  },
+  {
+    id:'p4', num:'۴', title:'گزارش‌دهی و تایید',
+    hint:'دو لایه کنترل کیفیت: بازبینی سرپرست بازرسی، سپس تایید معاونت.',
+    nodes:[
+      {n:12, role:'insp', title:'تدوین پیش‌نویس گزارش بازرسی',
+       desc:'ساختار استاندارد: دامنه و معیار، روش، یافته‌ها با شواهد، درجه مغایرت، نتیجه‌گیری و پیشنهاد اقدام اصلاحی.',
+       in:'صورت‌جلسه‌ها و یافته‌ها', out:'پیش‌نویس گزارش', sla:'۳ روز کاری'},
+      {n:13, role:'off', extra:['insp'], title:'بازبینی کیفی توسط سرپرست بازرسی',
+       desc:'کنترل کفایت شواهد، صحت استناد به معیار، بی‌طرفی لحن، و انطباق با قالب گزارش.',
+       in:'پیش‌نویس گزارش', out:'یادداشت بازبینی / تایید داخلی', sla:'۲ روز کاری'},
+      {n:14, type:'decision', role:'dep', title:'تایید گزارش توسط معاونت',
+       desc:'تصمیم نهایی روی محتوا و درجه‌بندی مغایرت‌ها.',
+       in:'گزارش بازبینی‌شده', out:'دستور اصلاح یا تایید نهایی', sla:'۳ روز کاری',
+       branches:[
+         {kind:'next', tag:'بله', text:'ابلاغ گزارش نهایی به واحد (گام ۱۵)'},
+         {kind:'loop', tag:'اصلاح', text:'بازگشت به گام ۱۲ — اصلاح گزارش'}
+       ]},
+      {n:15, role:'off', extra:['sys','req'], title:'ابلاغ گزارش نهایی و شروع مهلت پاسخ',
+       desc:'ابلاغ رسمی به واحد مورد بازرسی، ثبت در سامانه و شروع ساعت مهلت اعلام نظر/اعتراض.',
+       in:'گزارش تاییدشده', out:'رسید ابلاغ + وضعیت «تاییدشده»', sla:'۱ روز کاری'},
+      {n:16, type:'decision', role:'req', title:'اعتراض واحد به گزارش؟',
+       desc:'واحد می‌تواند ظرف مهلت مقرر لایحه اعتراض همراه با مستندات جدید ارائه کند.',
+       in:'گزارش نهایی', out:'لایحه اعتراض یا سکوت (تایید ضمنی)', sla:'۵ روز کاری',
+       branches:[
+         {kind:'next', tag:'بله', text:'رسیدگی به اعتراض توسط معاونت (گام ۱۷)'},
+         {kind:'next', tag:'خیر', text:'ورود به تشخیص تخلف (گام ۱۸)'}
+       ]},
+      {n:17, role:'dep', title:'رسیدگی به اعتراض',
+       desc:'بررسی مستندات جدید؛ در صورت پذیرش، گزارش اصلاح و دوباره ابلاغ می‌شود، در غیر این صورت نتیجه اعتراض اعلام می‌گردد.',
+       in:'لایحه اعتراض', out:'رای پذیرش یا رد اعتراض', sla:'۵ روز کاری'},
+    ]
+  },
+  {
+    id:'p5', num:'۵', title:'اقدام اصلاحی و راستی‌آزمایی',
+    hint:'حلقه بهبود: اقدام اصلاحی تا زمان اثربخشی تاییدشده باز می‌ماند.',
+    nodes:[
+      {n:18, type:'decision', role:'dep', extra:['top'], title:'تخلف محرز یا مغایرت بحرانی؟',
+       desc:'تفکیک مسیر انضباطی از مسیر اصلاحی.',
+       in:'ماهیت و درجه مغایرت‌ها', out:'صورت‌جلسه ارجاع یا عدم ارجاع', sla:'۲ روز کاری',
+       branches:[
+         {kind:'escalate', tag:'بله', text:'ارجاع به کمیته رسیدگی / حراست (گام ۱۹) — موازی با اقدام اصلاحی'},
+         {kind:'next', tag:'خیر', text:'فقط اقدام اصلاحی (گام ۲۰)'}
+       ]},
+      {n:19, role:'top', extra:['dep'], title:'ارجاع به کمیته رسیدگی / حراست',
+       desc:'رسیدگی به جنبه تخلفاتی یا انضباطی خارج از چرخه عادی؛ نتیجه به پرونده بازرسی بازمی‌گردد و مانع اقدام اصلاحی نمی‌شود.',
+       in:'صورت‌جلسه ارجاع', out:'نتیجه رسیدگی کمیته', sla:'حسب مورد'},
+      {n:20, role:'req', extra:['dep'], title:'تعیین اقدامات اصلاحی (CAPA)',
+       desc:'برای هر مغایرت: اقدام اصلاحی، اقدام پیشگیرانه، مسئول اجرا، مهلت و شاخص اثربخشی؛ تصویب توسط معاونت.',
+       in:'مغایرت‌های تاییدشده', out:'برنامه اقدام مصوب', sla:'۵ روز کاری'},
+      {n:21, role:'req', title:'اجرای اقدام اصلاحی',
+       desc:'اجرا توسط واحد مسئول و ارسال مستندات و شواهد اجرا به دفتر بازرسی.',
+       in:'برنامه اقدام مصوب', out:'گزارش اجرا + شواهد', sla:'حسب مهلت مصوب'},
+      {n:22, type:'decision', role:'insp', extra:['off'], title:'راستی‌آزمایی اثربخشی توسط بازرس',
+       desc:'بررسی شواهد و در صورت لزوم بازدید مجدد؛ سنجش اینکه اقدام، علت ریشه‌ای را حذف کرده است.',
+       in:'شواهد اجرای اقدام', out:'برگه راستی‌آزمایی', sla:'۵ روز کاری پس از اعلام',
+       branches:[
+         {kind:'next', tag:'بله', text:'رفع مغایرت و بستن پرونده (گام ۲۴)'},
+         {kind:'loop', tag:'خیر', text:'بازگشت به گام ۲۰ — تعیین مهلت و اقدام جدید'},
+         {kind:'escalate', tag:'تکرار', text:'ارجاع به کمیته انضباطی (گام ۲۳)'}
+       ]},
+      {n:23, role:'top', title:'ارجاع به کمیته انضباطی',
+       desc:'در صورت تکرار عدم اثربخشی یا قصور در اجرای اقدامات؛ دستور کمیته جایگزین برنامه اقدام می‌شود.',
+       in:'سابقه تکرار عدم اثربخشی', out:'دستور کمیته', sla:'حسب مورد'},
+    ]
+  },
+  {
+    id:'p6', num:'۶', title:'اختتام، بایگانی و بازخورد',
+    hint:'پایان چرخه و تغذیه برنامه‌ریزی دوره بعد — حلقه بهبود مستمر.',
+    nodes:[
+      {n:24, role:'dep', extra:['off'], title:'صدور نامه رفع مغایرت و بستن پرونده',
+       desc:'تایید نهایی معاونت، تغییر وضعیت پرونده به «بسته‌شده» و اعلام رسمی به واحد.',
+       in:'راستی‌آزمایی تاییدشده', out:'نامه رفع مغایرت', sla:'۱ روز کاری'},
+      {n:25, role:'sys', extra:['off'], title:'بایگانی سوابق و به‌روزرسانی داشبورد شاخص‌ها',
+       desc:'بایگانی کنترل‌شده مستندات بر اساس سیاست نگهداری سوابق و به‌روزرسانی شاخص‌های عملکرد.',
+       in:'کل مستندات پرونده', out:'سابقه بایگانی‌شده + داده شاخص‌ها', sla:'۲ روز کاری'},
+      {n:26, role:'off', extra:['top','insp'], title:'درس‌آموخته‌ها و بازنگری چک‌لیست و آیین‌نامه',
+       desc:'تحلیل علل ریشه‌ای تکرارشونده، به‌روزرسانی چک‌لیست و معیارها، و ارائه گزارش دوره‌ای به مدیریت ارشد.',
+       in:'آمار و یافته‌های دوره', out:'چک‌لیست به‌روز + گزارش دوره‌ای', sla:'پایان هر دوره'},
+      {type:'terminal', role:'sys', title:'بازگشت به برنامه‌ریزی بازرسی دوره بعد',
+       desc:'خروجی این مرحله، ورودی گام ۱ در چرخه بعد است: برنامه سالانه بازرسی بر اساس ریسک و درس‌آموخته‌ها بازتنظیم می‌شود.'},
+    ]
+  },
+];
+
+const RULES = [
+  ['گام ۳ — تایید مشخصات بازرس','صدور حکم ماموریت','بازگشت به گام ۲ و انتخاب بازرس جایگزین','معاونت'],
+  ['گام ۱۰ — نیاز به کارشناسی تکمیلی','بازگشت به گام ۸ با مهلت محدود','ادامه به جلسه اختتامیه','بازرس'],
+  ['گام ۱۴ — تایید گزارش','ابلاغ گزارش نهایی به واحد','بازگشت به گام ۱۲ برای اصلاح','معاونت'],
+  ['گام ۱۶ — اعتراض واحد','رسیدگی در گام ۱۷','ورود به تعیین اقدام اصلاحی','واحد'],
+  ['گام ۱۸ — تخلف محرز','ارجاع به کمیته (موازی با اقدام اصلاحی)','فقط اقدام اصلاحی','معاونت'],
+  ['گام ۲۲ — اثربخشی اقدام','بستن پرونده','مهلت جدید؛ در تکرار، کمیته انضباطی','بازرس'],
+];
+
+const KPIS = [
+  ['نرخ انجام به‌موقع','بازرسی انجام‌شده در مهلت ÷ کل برنامه','بیش از ۹۰٪'],
+  ['میانگین زمان تا تایید بازرس','فاصله گام ۲ تا ۳','کمتر از ۲ روز کاری'],
+  ['میانگین زمان چرخه','از ثبت درخواست تا بستن پرونده','کمتر از ۴۵ روز کاری'],
+  ['نرخ مغایرت','مغایرت‌ها ÷ موارد بررسی‌شده','روند کاهشی'],
+  ['اثربخشی اقدام اصلاحی','تایید در راستی‌آزمایی نخست ÷ کل موارد','بیش از ۸۰٪'],
+  ['نرخ بازگشت گزارش','گزارش نیازمند اصلاح ÷ کل گزارش‌ها','کمتر از ۱۵٪'],
+  ['پرونده‌های گذشته‌از‌مهلت','شمار پرونده‌های بازِ تاخیردار','صفر'],
+  ['نرخ بازرسی سرزده','سرزده ÷ کل بازرسی‌ها','حداقل ۲۰٪'],
+];
+
+/* ============================================================
+   ابزارها
+   ============================================================ */
+const FA = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];
+const fa = s => String(s).replace(/\d/g, d => FA[+d]);
+const el = (tag, cls, html) => {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (html != null) e.innerHTML = html;
+  return e;
+};
+const roleOf = k => ROLES[k] || ROLES.off;
+const allNodes = () => PHASES.flatMap(p => p.nodes);
+
+/* ---------- آمار هدر ---------- */
+(function(){
+  const nodes = allNodes();
+  const decisions = nodes.filter(n => n.type === 'decision').length;
+  const loops = nodes.reduce((s,n) => s + ((n.branches||[]).filter(b => b.kind !== 'next').length), 0);
+  const items = [
+    [fa(nodes.length), 'گام و نقطه شروع/پایان'],
+    [fa(PHASES.length), 'فاز فرایند'],
+    [fa(decisions), 'نقطه تصمیم'],
+    [fa(loops), 'حلقه بازگشت / ارجاع'],
+    [fa(Object.keys(ROLES).length), 'نقش سازمانی'],
+    ['۳۵–۵۰', 'روز کاری میانگین چرخه'],
+  ];
+  document.getElementById('stats').innerHTML =
+    items.map(([b,s]) => `<div class="stat"><b>${b}</b><span>${s}</span></div>`).join('');
+})();
+
+/* ---------- افسانه و فیلتر نقش ---------- */
+const activeRoles = new Set();
+(function(){
+  const box = document.getElementById('legend');
+  box.innerHTML = `<span style="font-size:12.5px;color:var(--muted);align-self:center">فیلتر بر اساس نقش:</span>`;
+  Object.entries(ROLES).forEach(([k,r]) => {
+    const c = el('button','chip');
+    c.dataset.role = k;
+    c.innerHTML = `<span class="dot" style="background:${r.color}"></span>${r.label}`;
+    c.onclick = () => {
+      activeRoles.has(k) ? activeRoles.delete(k) : activeRoles.add(k);
+      applyFilter();
+    };
+    box.appendChild(c);
+  });
+})();
+
+function applyFilter(){
+  document.querySelectorAll('.chip[data-role]').forEach(c =>
+    c.classList.toggle('off', activeRoles.size > 0 && !activeRoles.has(c.dataset.role)));
+  document.querySelectorAll('.node').forEach(nd => {
+    if (!activeRoles.size) return nd.classList.remove('dim');
+    const roles = (nd.dataset.roles || '').split(',');
+    nd.classList.toggle('dim', !roles.some(r => activeRoles.has(r)));
+  });
+}
+document.getElementById('clearFilter').onclick = () => { activeRoles.clear(); applyFilter(); };
+
+/* ---------- رندر نمودار فرایند ---------- */
+(function(){
+  const root = document.getElementById('view-flow');
+  PHASES.forEach(phase => {
+    const sec = el('section','phase');
+    const head = el('div','phase-head',
+      `<div class="phase-num">${phase.num}</div>
+       <div><h2>${phase.title}</h2><p>${phase.hint}</p></div>`);
+    sec.appendChild(head);
+    const flow = el('div','flow');
+
+    phase.nodes.forEach(node => {
+      const isDecision = node.type === 'decision';
+      const isTerminal = node.type === 'terminal';
+      const role = roleOf(node.role);
+      const roles = [node.role, ...(node.extra || [])].filter(Boolean);
+
+      const wrap = el('div','node' + (isDecision ? ' decision' : '') + (isTerminal ? ' terminal' : ''));
+      wrap.dataset.roles = roles.join(',');
+      wrap.style.setProperty('--accent', role.color);
+      wrap.style.setProperty('--accent-bg', role.bg);
+
+      const numBadge = node.n
+        ? `<span class="step-no">گام ${fa(node.n)}</span>`
+        : (isTerminal ? `<span class="step-no" style="background:#1f3a8a">شروع/پایان</span>` : '');
+      const decisionIcon = isDecision ? `<span class="q-badge">؟</span>` : '';
+
+      let html = `<div class="card">
+        <h3>${numBadge}${decisionIcon}<span>${node.title}</span><span class="role-tag">${role.label}</span></h3>`;
+      if (node.desc) html += `<p class="desc">${node.desc}</p>`;
+
+      if (!isTerminal && (node.in || node.out || node.sla)) {
+        html += `<div class="meta details">`;
+        if (node.in)  html += `<div><b>ورودی:</b> ${node.in}</div>`;
+        if (node.out) html += `<div><b>خروجی/رکورد:</b> ${node.out}</div>`;
+        if (node.sla) html += `<div class="sla"><b>مهلت:</b> ${node.sla}</div>`;
+        html += `</div>`;
+      }
+      if (isDecision && node.branches) {
+        html += `<div class="branches details">` + node.branches.map(b =>
+          `<div class="branch ${b.kind}"><span class="tag">${b.tag}</span><span>${b.text}</span></div>`).join('') + `</div>`;
+      }
+      html += `</div>`;
+      wrap.innerHTML = html;
+      flow.appendChild(wrap);
+    });
+
+    sec.appendChild(flow);
+    root.appendChild(sec);
+  });
+})();
+
+/* ---------- ماتریس نقش‌ها ---------- */
+(function(){
+  const t = document.getElementById('matrixTable');
+  const keys = Object.keys(ROLES);
+  let html = `<thead><tr><th>#</th><th>گام</th>${keys.map(k =>
+    `<th style="text-align:center">${ROLES[k].label}</th>`).join('')}<th>مهلت</th></tr></thead><tbody>`;
+  let i = 0;
+  PHASES.forEach(phase => {
+    phase.nodes.forEach(node => {
+      i++;
+      const no = node.n ? fa(node.n) : '—';
+      const cells = keys.map(k => {
+        const primary = node.role === k;
+        const assist  = (node.extra || []).includes(k);
+        if (!primary && !assist) return `<td style="text-align:center;color:#dfe3ea">·</td>`;
+        const c = roleOf(k).color;
+        return `<td style="text-align:center">
+          <span class="mark ${primary ? 'primary' : 'assist'}" style="background:${c}">${primary ? '■' : '░'}</span></td>`;
+      }).join('');
+      html += `<tr data-step="${i}"><td class="nowrap">${no}</td><td>${node.title}</td>${cells}
+               <td class="nowrap">${node.sla || '—'}</td></tr>`;
+    });
+  });
+  t.innerHTML = html + '</tbody>';
+})();
+
+/* ---------- جدول گام‌ها ---------- */
+(function(){
+  const t = document.getElementById('stepsTable');
+  let html = `<thead><tr><th>#</th><th>گام</th><th>مسئول</th><th>ورودی</th>
+    <th>خروجی / رکورد</th><th>مهلت</th></tr></thead><tbody>`;
+  PHASES.forEach(phase => {
+    phase.nodes.forEach(node => {
+      if (!node.n) return;
+      const role = roleOf(node.role);
+      html += `<tr>
+        <td class="nowrap"><b>${fa(node.n)}</b></td>
+        <td><b>${node.title}</b><div style="color:var(--muted);font-size:12.3px">${phase.title}</div></td>
+        <td class="nowrap"><span class="role-tag" style="--accent:${role.color};--accent-bg:${role.bg};
+            color:${role.color};background:${role.bg};border-color:${role.color}">${role.label}</span></td>
+        <td>${node.in || '—'}</td><td>${node.out || '—'}</td><td class="nowrap">${node.sla || '—'}</td></tr>`;
+    });
+  });
+  t.innerHTML = html + '</tbody>';
+})();
+
+/* ---------- قواعد تصمیم ---------- */
+document.getElementById('rulesTable').innerHTML =
+  `<thead><tr><th>نقطه تصمیم</th><th>مسیر «بله»</th><th>مسیر «خیر»</th><th>تصمیم‌گیرنده</th></tr></thead><tbody>` +
+  RULES.map(r => `<tr><td><b>${r[0]}</b></td><td>${r[1]}</td><td>${r[2]}</td><td class="nowrap">${r[3]}</td></tr>`).join('') +
+  `</tbody>`;
+
+/* ---------- شاخص‌ها ---------- */
+document.getElementById('kpis').innerHTML = KPIS.map(k =>
+  `<div class="kpi"><h4>${k[0]}</h4><p>${k[1]}<br>هدف: <b>${k[2]}</b></p></div>`).join('');
+
+/* ---------- کد Mermaid ---------- */
+const MERMAID = document.getElementById('mermaid-source').textContent.trim();
+document.getElementById('mermaidSrc').textContent = MERMAID;
+document.getElementById('copyMermaid').onclick = async e => {
+  try { await navigator.clipboard.writeText(MERMAID); e.target.textContent = '✅ کپی شد'; }
+  catch { e.target.textContent = '⚠ کپی ناموفق — دستی انتخاب کنید'; }
+  setTimeout(() => e.target.textContent = '📋 کپی کد', 1800);
+};
+
+/* ---------- تب‌ها ---------- */
+document.querySelectorAll('.btn[data-view]').forEach(b => {
+  b.onclick = () => {
+    document.querySelectorAll('.btn[data-view]').forEach(x => {
+      x.classList.remove('active'); x.classList.add('ghost');
+    });
+    b.classList.add('active'); b.classList.remove('ghost');
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('show'));
+    document.getElementById('view-' + b.dataset.view).classList.add('show');
+    window.scrollTo({top: 0, behavior: 'smooth'});
+  };
+});
+
+/* ---------- باز/بستن جزئیات ---------- */
+let detailsOpen = true;
+document.getElementById('toggleDetails').onclick = e => {
+  detailsOpen = !detailsOpen;
+  document.querySelectorAll('.details').forEach(d => d.style.display = detailsOpen ? '' : 'none');
+  e.target.textContent = detailsOpen ? 'بستن جزئیات' : 'نمایش جزئیات';
+};
+</script>
+</body>
+</html>
