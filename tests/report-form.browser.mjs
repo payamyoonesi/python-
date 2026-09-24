@@ -1,0 +1,41 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import {pathToFileURL,fileURLToPath} from 'node:url';
+const here=path.dirname(fileURLToPath(import.meta.url)),modules=process.env.DIDBAN_TEST_MODULES||path.join(here,'node_modules');
+const {chromium}=await import(pathToFileURL(path.join(modules,'playwright/index.mjs')));
+const {default:AxeBuilder}=await import(pathToFileURL(path.join(modules,'@axe-core/playwright/dist/index.mjs')));
+const dir=await fs.mkdtemp(path.join(os.tmpdir(),'didban-form-'));
+const browser=await chromium.launch({headless:true,...(process.env.DIDBAN_CHROMIUM_PATH?{executablePath:process.env.DIDBAN_CHROMIUM_PATH,args:['--no-sandbox','--no-zygote','--single-process','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']}: {})});
+try{
+ const context=await browser.newContext({viewport:{width:1440,height:1100},reducedMotion:'reduce'}),page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto(pathToFileURL(path.join(here,'../docs/index.html')).href);
+ const id=await page.evaluate(()=>{engine.login('consultant','demo123');const p=engine.sourceProjects().find(p=>p.project==='ویلایی افتخار رویان');const ids=engine.createSourceDemoReports(p.id).ids;engine.login('inspector','demo123');selectedReport=engine.reports().find(r=>ids.includes(r.id)).id;view='reports';render();return selectedReport});
+ const login=async user=>page.evaluate(({user,id})=>{engine.login(user,'demo123');selectedReport=id;view='reports';render()},{user,id});
+ await page.locator('[data-action=report-scope]').click();await page.locator('#modal-form [name=codes]').selectOption(['4-4-1']);await page.locator('#modal-form [name=reason]').fill('فونداسیون در دامنه این بازدید؛ سایر موارد خارج از مأموریت');await page.locator('#modal-form button[type=submit]').click();
+ assert.equal(await page.locator('.report-rows > section').count(),1);await page.locator('[data-action=edit-report]').click();
+ assert.equal(await page.locator('#modal-form input[type=radio][name=code0]').count(),7);await page.locator('#modal-form [name=code0][value=Z]').check();assert.equal(await page.locator('#modal-form [name=score0]').inputValue(),'');assert.equal(await page.locator('#modal-form [name=level0]').inputValue(),'');assert.ok(await page.locator('#modal-form [name=reviewed0]').isChecked());
+ await page.locator('#modal-form [name=reason0]').fill('دسترسی به بخش فرضی فراهم نشد');await page.locator('#modal-form [name=revisitPlan0]').fill('بازدید تکمیلی در مأموریت مستقل بعدی');
+ await page.locator('#modal-form [name=code0][value=NC-M]').check();await page.locator('#modal-form [name=score0]').selectOption('2');await page.locator('#modal-form [name=level0]').selectOption('0.5');await page.locator('#modal-form [name=measured0]').fill('اندازه‌گیری فرضی؛ نتیجه واقعی نیست');
+ // Capture identity separately from the actual ticking controls.
+ await page.locator('.modal-body').evaluate(el=>el.scrollTop=0);
+ await page.screenshot({path:path.join(dir,'inspector-form-preview.png')});
+ await page.locator('#modal-form [name=code0][value=C]').evaluate(el=>el.closest('.report-check').scrollIntoView({block:'start'}));
+ await page.screenshot({path:path.join(dir,'inspector-ticks-preview.png')});
+ const axe=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();assert.deepEqual(axe.violations.map(x=>({id:x.id,targets:x.nodes.map(n=>n.target)})),[]);
+ await page.locator('#modal-form [name=submit]').check();await page.locator('#modal-form button[type=submit]').click();await page.waitForFunction(()=>!document.querySelector('#modal').open);
+ assert.equal(await page.locator('[data-action=edit-report]').count(),0);await login('consultant');
+ const lockedProgram=await page.evaluate(id=>engine.reports().find(r=>r.id===id).programId,id);
+ await page.locator('.nav [data-id=programs]').click();assert.equal(await page.locator(`[data-action=assign-mandatory-point][data-id="${lockedProgram}"]`).count(),0);
+ const eligible=await page.evaluate(()=>engine.programs().filter(p=>{const c=engine.db.cases.find(c=>c.id===p.caseId),f=c.findings.find(f=>f.id===p.findingId);return c.status!=='Closed'&&f.status!=='FindingClosed'&&['Proposed','Issued','Accepted','Completed'].includes(p.status)&&REPORT_DISCIPLINES.includes(p.discipline)&&!engine.reports().some(r=>r.programId===p.id&&r.workflowFormVersion===1&&r.status==='Submitted')}).map(p=>p.id));
+ assert.deepEqual((await page.locator('[data-action=assign-mandatory-point]').evaluateAll(xs=>xs.map(x=>x.dataset.id))).sort(),eligible.sort());
+ await page.evaluate(id=>{selectedReport=id;view='reports';render()},id);await page.locator('[data-action=report-receipt]').click();await page.locator('#modal-form [name=verdict]').selectOption('NeedsCorrection');await page.locator('#modal-form [name=note]').fill('نشانی بازدید دقیق‌تر شود');await page.locator('#modal-form button[type=submit]').click();
+ await login('inspector');await page.locator('[data-action=report-revise]').click();await page.locator('#modal-form button[type=submit]').click();const revised=await page.evaluate(()=>selectedReport);assert.notEqual(revised,id);await page.locator('[data-action=edit-report]').click();assert.equal(await page.locator('#modal-form [name=reviewed0]').isChecked(),false);await page.locator('#modal-form [name=reviewed0]').check();await page.locator('#modal-form [name=location0]').fill('بلوک فرضی یک، فونداسیون');await page.locator('#modal-form [name=submit]').check();await page.locator('#modal-form button[type=submit]').click();
+ await page.evaluate(id=>{engine.login('consultant','demo123');selectedReport=id;render()},revised);await page.locator('[data-action=report-receipt]').click();await page.locator('#modal-form [name=note]').fill('کامل‌بودن فرم بررسی شد؛ نظر کارشناسی جداست');await page.locator('#modal-form button[type=submit]').click();
+ await page.evaluate(id=>{engine.login('inspector','demo123');selectedReport=id;render()},revised);await page.locator('[data-action=report-link]').click();await page.locator('#modal-form button[type=submit]').click();
+ const state=await page.evaluate(()=>{const f=engine.db.cases.find(c=>c.id===selectedCase).findings.find(f=>f.id===selectedFinding);return{step:f.nextStep,reportId:f.reportInputSource.reportId,opinion:f.expertOpinion,decision:f.deputyDecision}});assert.equal(state.step,7);assert.equal(state.reportId,revised);assert.equal(state.opinion,null);assert.equal(state.decision,null);
+ await page.locator('[data-action=nav][data-id=reports]').click();await page.locator('#report-filters [name=discipline]').selectOption('سازه');await page.locator('#report-filters button[type=submit]').click();assert.ok((await page.locator('.listcards').last().innerText()).includes('سازه'));
+ await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=390));await page.reload();await page.evaluate(id=>{engine.login('c03','demo123');selectedReport=id;view='reports';render()},revised);assert.equal(await page.locator('[data-action=edit-report]').count(),0);assert.equal(await page.locator('[data-action=report-receipt]').count(),0);assert.equal(await page.locator('.report-workflow-panel').count(),1);
+ assert.deepEqual(errors,[]);console.log('PASS: bound inspector form, scope, radio ticks, partial results, receipt review, immutable revision, workflow link, scoped filters, persistence, mobile and axe.');console.log('Artifacts: '+dir);
+}finally{await browser.close()}
